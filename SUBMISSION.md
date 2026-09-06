@@ -1,10 +1,8 @@
-# VeruSeal 🔐
+# VeruShield Connect
 
 > End-to-end encrypted messaging where the blockchain is the mailbox — no servers, no metadata, permanent.
 
-**Team**: Venture23 — <names>
-**Demo video**: <link>
-**Live demo**: <url>
+**Team**: Venture23 Inc.
 
 ## How it works
 
@@ -15,15 +13,14 @@ connect to each other — or to any server.
 
     sender                        Starknet                       receiver
     encrypt in browser   ─►   ciphertext stored on-chain   ◄─   poll & read slots
-                              (permanent, unreadable)           decrypt locally 💬
+                              (permanent, unreadable)           decrypt locally 
 
 ## Features
 
 - 💬 1-to-1 chat and group messaging (per-member encrypted lanes)
 - 📦 Outbox batching — many messages, one transaction, one fee
-- 💸 Payment memos — message + token transfer, atomic in a single transaction
 - 🔑 Backup = just your keys; full message history rebuilds from the chain alone
-- 🌐 Web app + CLI, live on Sepolia testnet
+- 🌐 Web app + CLI
 
 ## Proof it works
 
