@@ -15,7 +15,7 @@ same commit as any deployment. Explorer: prefix addresses/txs with `https://sepo
 | Constructor `pool` | `0x254a6b29…e0d91` — **the real STRK20 Sepolia pool**; `pool()` verified to echo it after deploy |
 | Source | `contracts/src/message_anonymizer.cairo` @ class above (unchanged since `b39b66e`) |
 | Deployed | 2026-09-07 |
-| Mode | Pool mode only. Writes come from the pool via `InvokeExternal`; nothing else can call `privacy_invoke` (`CALLER_NOT_POOL`). First live send still waits on the proving endpoint ([docs/15 § B2](docs/15-testnet-runbook.md)). |
+| Mode | Pool mode only. Writes come from the pool via `InvokeExternal`; nothing else can call `privacy_invoke` (`CALLER_NOT_POOL`). First live send still waits on the proving endpoint ([docs/15 § B2](docs/Milestone/15-testnet-runbook.md)). |
 
 ### MessageAnonymizer — Phase A (direct/dev mode, superseded)
 
@@ -76,7 +76,7 @@ same commit as any deployment. Explorer: prefix addresses/txs with `https://sepo
 | Deployed | 2026-09-07, via `contracts/deploy/mainnet.sh` |
 | Deployer | `0x0227a359dd6dcdb1fb9e0d42c21118b0d54a332083fc419cd67ed042ea284729` (Ready X account; key in `contracts/.env`, git-ignored) |
 | Verification | Submitted to Voyager 2026-09-07 (job `381255ba-a382-4afe-a4e5-f9cb19305241`, status at submission: 5); MIT license in `Scarb.toml` and `LICENSE.md` at the repo root |
-| Mode | Pool mode only: the pool calls `privacy_invoke` through `InvokeExternal` (`CALLER_NOT_POOL` otherwise). The mainnet pool's class (`0x67dddd…554d`) was checked to call exactly this selector before deploying ([docs/21](docs/21-mainnet-deployment-checklist.md)). |
+| Mode | Pool mode only: the pool calls `privacy_invoke` through `InvokeExternal` (`CALLER_NOT_POOL` otherwise). The mainnet pool's class (`0x67dddd…554d`) was checked to call exactly this selector before deploying ([docs/21](docs/Milestone/21-mainnet-deployment-checklist.md)). |
 
 ### External (not ours)
 

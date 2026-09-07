@@ -5,7 +5,7 @@
 [starkware-libs/starknet-privacy](https://github.com/starkware-libs/starknet-privacy),
 commit `bc75e4ba` (2026-09-01), by reading the Cairo pool, the TypeScript SDK, and their
 tests — and, where marked **[ran]**, by executing code. Spike scripts live in
-[`spikes/`](../spikes/).
+[`spikes/`](../../spikes/).
 
 ## The four exit questions
 

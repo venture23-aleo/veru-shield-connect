@@ -9,7 +9,7 @@ prompt. The app never sees a key and needs no proving-service URL.
 SNIP-36's wallet methods, typed in `@starknet-io/types-js` 0.10 and exposed by starknet.js 10.5
 (`WalletAccountV6`). We call the injected object directly (`window.starknet_braavos`,
 `window.starknet_ready`) — `request({ type, params })` is the whole protocol
-([apps/web/src/lib/wallet.ts](../apps/web/src/lib/wallet.ts)):
+([apps/web/src/lib/wallet.ts](../../apps/web/src/lib/wallet.ts)):
 
 | Method | Used for |
 | --- | --- |

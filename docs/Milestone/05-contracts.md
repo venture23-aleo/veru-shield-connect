@@ -12,7 +12,7 @@ calldata into `privacy_invoke`'s parameters and deserializes the return value as
 > are the *return value only* — there is no `deposits` input parameter. The pool serializes
 > the invoke calldata straight into whatever parameters the anonymizer declares, and applies
 > whatever deposits span it returns. A pure message returns an empty span. The implemented
-> contract in [`contracts/src/message_anonymizer.cairo`](../contracts/src/message_anonymizer.cairo)
+> contract in [`contracts/src/message_anonymizer.cairo`](../../contracts/src/message_anonymizer.cairo)
 > is the source of truth.
 
 ```cairo
@@ -45,8 +45,8 @@ Rules the pattern imposes, all of which we must satisfy:
 ## Implementation sketch
 
 Superseded by the implemented contract —
-[`contracts/src/message_anonymizer.cairo`](../contracts/src/message_anonymizer.cairo), tested
-in [`contracts/tests/`](../contracts/tests/) against the frozen vectors.
+[`contracts/src/message_anonymizer.cairo`](../../contracts/src/message_anonymizer.cairo), tested
+in [`contracts/tests/`](../../contracts/tests/) against the frozen vectors.
 
 Three properties carry the whole contract:
 
@@ -76,7 +76,7 @@ helper conforms to `privacy_invoke` compiled against the pinned pool source
 
 What is *not* yet true, stated plainly so this section stops implying it: **no transaction of
 ours has gone through a deployed pool.** The mechanics are proven on **devnet against the real
-pool contract** ([`e2e-pool.test.ts`](../apps/cli/test/e2e-pool.test.ts), mock proving); the
+pool contract** ([`e2e-pool.test.ts`](../../apps/cli/test/e2e-pool.test.ts), mock proving); the
 Sepolia helper still carries `pool` = the deployer account (dev mode), and the live path is
 blocked on the proving endpoint ([15 § B2](15-testnet-runbook.md)) and the Phase-B redeploy
 ([16 § W1](16-arch1-plan.md)). The addresses `0x040337b1…e812a` (Mainnet) /
@@ -96,7 +96,7 @@ plus submission time. See [D2](09-open-decisions.md#d2--the-proof-validity-windo
 | **Mainnet** | [`0x030a2a39…b3a6`](https://voyager.online/contract/0x030a2a39c47adba579c8fd07e7d9adbf5fe8f36b97da0b6ead884cae3a8bb3a6) | `0x040337b1…812a` (STRK20 mainnet pool) | [`0x07f38182…`](https://voyager.online/tx/0x07f38182c93bd902e8d3830b86a4f1acc0be90f629ba396e7ea3a513ae9fb8e8) · declare [`0x04053469…`](https://voyager.online/tx/0x040534693d8cbb2f9d871d5f3195fcdbaa51892c01ebc49e68900d485c69b6f7) |
 | Sepolia | [`0x016f77a5…f6e0b6`](https://sepolia.voyager.online/contract/0x016f77a566ed28f2945e315f2de971b8f3e83a03b93340e8927a311277f6e0b6) | `0x254a6b29…e0d91` (STRK20 Sepolia pool) | [`0x0425af6d…`](https://sepolia.voyager.online/tx/0x0425af6dad2ce028c83918ce64feee9d0351f4cd8a83325a6b934eaf19e6537e) |
 
-Full records, class hashes and fees: [DEPLOYMENTS.md](../DEPLOYMENTS.md). Mainnet was deployed
+Full records, class hashes and fees: [DEPLOYMENTS.md](../../DEPLOYMENTS.md). Mainnet was deployed
 2026-09-07 with the same class as Sepolia after checking that the mainnet pool's newer class
 still invokes external contracts through `privacy_invoke` ([21](21-mainnet-deployment-checklist.md)).
 

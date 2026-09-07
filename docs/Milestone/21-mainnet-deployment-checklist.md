@@ -1,6 +1,6 @@
 # 21 — Mainnet deployment checklist
 
-The helper contract (`MessageAnonymizer`, [contracts/src/message_anonymizer.cairo](../contracts/src/message_anonymizer.cairo))
+The helper contract (`MessageAnonymizer`, [contracts/src/message_anonymizer.cairo](../../contracts/src/message_anonymizer.cairo))
 must exist on mainnet, pinned to the mainnet STRK20 pool, before any mainnet message or
 payment can be sent — and before the three transaction hashes the hackathon scores can exist.
 This is the order of operations, with the values verified on 2026-09-07.
@@ -20,7 +20,7 @@ This is the order of operations, with the values verified on 2026-09-07.
 | Helper class hash (Sepolia) | `0x0096558250259ea6ed253261f660a81e2041f98b2151dc54177cf8a854b08612` | must be **declared on mainnet** first — a declare is part of the deploy |
 
 **Done 2026-09-07:** the helper is live on mainnet at `0x030a2a39c47adba579c8fd07e7d9adbf5fe8f36b97da0b6ead884cae3a8bb3a6`
-(declare `0x040534693d…`, deploy `0x07f38182c9…`, 4.9 STRK all-in) — [DEPLOYMENTS.md](../DEPLOYMENTS.md) § Mainnet.
+(declare `0x040534693d…`, deploy `0x07f38182c9…`, 4.9 STRK all-in) — [DEPLOYMENTS.md](../../DEPLOYMENTS.md) § Mainnet.
 Sections A–C below are complete; **D (the three transactions) and E are what remain.**
 
 ## Costs, budget before you start

@@ -259,7 +259,7 @@ Then `msg init --mode pool` and fill `config.pool`:
 > reproduces the mined transaction's hash exactly. Submitting the *same* signed transaction
 > to `https://alpha-sepolia.starknet.io/gateway/add_transaction` (which parses the fields and
 > verifies the proof itself) was accepted first time. Both clients now submit there
-> ([`gateway.ts`](../apps/cli/src/gateway.ts)); the gateway answers no CORS preflight, so the
+> ([`gateway.ts`](../../apps/cli/src/gateway.ts)); the gateway answers no CORS preflight, so the
 > browser goes through the dev server's `/gateway` proxy. Devnet keeps the RPC path.
 >
 > Two more gateway rules met on the way: `proof_facts` and `proof` must travel together
@@ -373,7 +373,7 @@ recommendation. Direct submission stays available as the liveness fallback.
 
 ## Quick reference
 
-> Canonical address registry: [DEPLOYMENTS.md](../DEPLOYMENTS.md) — update it in the same
+> Canonical address registry: [DEPLOYMENTS.md](../../DEPLOYMENTS.md) — update it in the same
 > commit as any deployment. The table below is a convenience snapshot.
 
 | Item | Value |

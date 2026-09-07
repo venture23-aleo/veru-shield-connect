@@ -5,9 +5,9 @@ build to Sepolia. Status per item: **auto** = asserted by a test that runs today
 needs a human in a browser; **gap** = not covered yet; **blocked** = needs the Sepolia proving
 endpoint ([15 § B2](15-testnet-runbook.md)).
 
-Automated coverage lives in three places: [`sdk/test`](../sdk/test) (unit),
-[`apps/cli/test/e2e-pool.test.ts`](../apps/cli/test/e2e-pool.test.ts) and
-[`apps/web/test/pool.e2e.test.ts`](../apps/web/test/pool.e2e.test.ts) (both against the real
+Automated coverage lives in three places: [`sdk/test`](../../sdk/test) (unit),
+[`apps/cli/test/e2e-pool.test.ts`](../../apps/cli/test/e2e-pool.test.ts) and
+[`apps/web/test/pool.e2e.test.ts`](../../apps/web/test/pool.e2e.test.ts) (both against the real
 pool contract on devnet, mock proving — gated on `RUN_POOL_E2E=1 STARKNET_PRIVACY=<checkout>`).
 
 ## A. Environment

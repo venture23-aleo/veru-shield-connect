@@ -21,10 +21,10 @@ connect to each other — or to any server.
 - 💸 Money in the chat, through the STRK20 pool: **pay** with a private memo in one transaction,
   **request** a payment (one-tap pay on the other side, settles as ✓ paid), **split / tip** a group
   (one private note per member, one proof), and **receipts** matched against your own pool notes
-  ([docs/19](docs/19-payments-in-chat.md)). You pay publicly; who you paid and how much stay private.
+  ([docs/19](docs/Milestone/19-payments-in-chat.md)). You pay publicly; who you paid and how much stay private.
 - 📦 Outbox batching — many messages, one transaction, one fee
 - 🔑 Backup = just your keys; full message history rebuilds from the chain alone
-- 👛 Ready wallet mode through the STRK20 wallet API — the wallet proves and signs; no keys pasted (Braavos does not expose the API yet) ([docs/20](docs/20-wallet-mode.md))
+- 👛 Ready wallet mode through the STRK20 wallet API — the wallet proves and signs; no keys pasted (Braavos does not expose the API yet) ([docs/20](docs/Milestone/20-wallet-mode.md))
 - 🌐 Web app + CLI
 
 ## Proof it works

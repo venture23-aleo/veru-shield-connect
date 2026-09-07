@@ -13,11 +13,11 @@ private, and the memo rides in the same STRK20 pool transaction as the transfer.
 
 ## Formats
 
-- `PAY1` (binary, [sdk/src/payment.ts](../sdk/src/payment.ts)): `magic 4 B · token 32 B · amount u128 16 B · utf-8 text`. Inside the AEAD.
+- `PAY1` (binary, [sdk/src/payment.ts](../../sdk/src/payment.ts)): `magic 4 B · token 32 B · amount u128 16 B · utf-8 text`. Inside the AEAD.
 - `REQ1` (text, same file): `REQ1 0x<token> <amount>\n<text>`. Text on purpose — a request moves no
   value, so it takes the outbox → batch path and costs the requester no pool balance. The
   payer's client renders a **Pay** button that pre-fills the pay panel.
-- **Settlement** is client-side and pure ([contacts.ts `settleRequests`](../apps/web/src/lib/contacts.ts)):
+- **Settlement** is client-side and pure ([contacts.ts `settleRequests`](../../apps/web/src/lib/contacts.ts)):
   a request is settled by the first later payment *from the other direction* with the same
   token and amount; each payment settles at most one request. The chain has no notion of it.
 
@@ -25,7 +25,7 @@ private, and the memo rides in the same STRK20 pool transaction as the transfer.
 
 People type STRK (`2.5`); the pool moves u128 smallest units. STRK is the one token whose
 decimals we pin (18, same address on Sepolia/mainnet/devnet); anything else is entered and
-shown in smallest units, labelled as such ([amounts.ts](../apps/web/src/lib/amounts.ts)).
+shown in smallest units, labelled as such ([amounts.ts](../../apps/web/src/lib/amounts.ts)).
 
 ## Group splits
 
