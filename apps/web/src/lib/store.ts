@@ -261,7 +261,7 @@ export class AppStore {
       const u256 = (r: string[]) => Number((BigInt(r[0] ?? "0x0") + (BigInt(r[1] ?? "0x0") << 128n)) / 10n ** 15n) / 1000;
       const bal = await provider.callContract({ contractAddress: STRK, entrypoint: "balanceOf", calldata: [cfg.accountAddress] });
       this.strkBalance = u256(bal);
-      if (cfg.mode === "pool" && cfg.poolAddress) {
+      if (cfg.poolAddress) {
         const fee = await provider.callContract({ contractAddress: cfg.poolAddress, entrypoint: "get_fee_amount", calldata: [] });
         this.poolFee = Number(BigInt(fee[0] ?? "0x0") / 10n ** 15n) / 1000;
       }

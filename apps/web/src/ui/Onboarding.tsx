@@ -4,7 +4,7 @@ import { randomFelt, store } from "../lib/store.js";
 import type { Contact } from "../lib/contacts.js";
 import { describeAmount, parseAmount, STRK_TOKEN } from "../lib/amounts.js";
 import { MAINNET_WALLET_PRESET, SEPOLIA_PRESET, SEPOLIA_WALLET_PRESET } from "../lib/presets.js";
-import { chainName, connectWallet, deriveViewingKey, explainProbe, probeStrk20, READY_INSTALL_URL, READY_NAME, readyWallets, registeredOnPool, strk20Submit, watchForReady, WalletRequestError, type InjectedWallet, type Strk20Support } from "../lib/wallet.js";
+import { chainName, connectWallet, deriveViewingKey, explainProbe, probeStrk20, READY_INSTALL_URL, READY_NAME, readyWallets, registeredOnPool, strk20Submit, switchChain, watchForReady, WalletRequestError, type InjectedWallet, type Strk20Support } from "../lib/wallet.js";
 import { sdkAvailable } from "../lib/privacySdk.js";
 import { WorkspaceShell, type AppRoute } from "./WorkspaceShell.js";
 
@@ -336,8 +336,28 @@ function KeyStep({ keys, setKeys, onContinue, onBack }: { keys: { viewingKey: st
         {wallet && !keys && (
           <div className="key-summary">
             <p>
-              <strong>{wallet.w.name}:</strong> <code className="rounded bg-surface-high px-1.5 py-0.5 text-secondary">{shorten(wallet.address)}</code> · {chainName(wallet.chainId)}
+              <strong>{wallet.w.name}:</strong> <code className="rounded bg-surface-high px-1.5 py-0.5 text-secondary">{shorten(wallet.address)}</code> ·{" "}
+              <strong className={wallet.chainId === MAINNET_WALLET_PRESET.chainId ? "text-primary" : "text-secondary"}>{chainName(wallet.chainId)}</strong>
+              <button
+                className="ghost small"
+                style={{ marginLeft: 8 }}
+                title={`Ask ${wallet.w.name} to switch network, then re-check`}
+                onClick={() => {
+                  const target = wallet.chainId === MAINNET_WALLET_PRESET.chainId ? SEPOLIA_WALLET_PRESET.chainId : MAINNET_WALLET_PRESET.chainId;
+                  void switchChain(wallet.w, target).then(
+                    (ok) => ok && connect(wallet.w),
+                    (e: unknown) => setWalletError(`${wallet.w.name}: ${e instanceof Error ? e.message : String(e)}`)
+                  );
+                }}
+              >
+                switch to {wallet.chainId === MAINNET_WALLET_PRESET.chainId ? "Sepolia" : "mainnet"}
+              </button>
             </p>
+            {wallet.chainId === MAINNET_WALLET_PRESET.chainId && (
+              <p className="probe-ok" style={{ margin: "4px 0" }}>
+                Mainnet: real funds. Helper <code>{shorten(MAINNET_WALLET_PRESET.helperAddress)}</code> is live and pinned to the STRK20 pool. Every send is one pool transaction: <strong>6 STRK pool fee + gas</strong>, approved in {wallet.w.name}.
+              </p>
+            )}
             {wallet.support === "checking" ? (
               <p className="hint">asking the wallet whether it speaks STRK20…</p>
             ) : wallet.support.ok ? (

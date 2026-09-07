@@ -7,6 +7,7 @@ import { store } from "../lib/store.js";
 import { typicalWalletSeconds, walletWaitText } from "../lib/walletBackend.js";
 import { shorten } from "./Onboarding.js";
 import { PrivacyInfoButton } from "./privacy.js";
+import { networkLabel } from "./WorkspaceShell.js";
 
 type PanelMode = "pay" | "request";
 /** "channelKey:index" → whether an unspent note of that amount sits in our pool balance. */
@@ -337,6 +338,7 @@ export function ThreadView({ contact, onBack, onPrivacy }: { contact: Contact; o
           <span className="text-outline">
             {preview.tier ? `${preview.tier} B tier · ${fmtUsd(preview.usd ?? 0)}` : draft ? `too long by ${preview.overBy} bytes` : ""}
             {preview.boundary ? ` · ${preview.boundary.bytesLeft} more bytes → next tier (+${fmtUsd(preview.boundary.extraUsd)})` : ""}
+            {(pool || walletMode) && store.poolFee !== null ? ` · each send: ${store.poolFee} STRK pool fee + gas${networkLabel() === "mainnet" ? " · real funds" : ""}` : ""}
           </span>
         </div>
 
