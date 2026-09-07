@@ -1,14 +1,13 @@
 /**
- * Wallet mode against mainnet: the live STRK20 pool (hackathon Day 0 guide)
- * and Cartridge's mainnet RPC (spec 0.10.2, the one starknet.js 10.5 accepts;
- * the guide's lava endpoint is discontinued). The helper is empty until the
- * message_anonymizer is deployed on mainnet with `pool` = this pool — fill it
- * from DEPLOYMENTS.md then.
+ * Wallet mode against mainnet: the live STRK20 pool (hackathon Day 0 guide),
+ * Cartridge's mainnet RPC (spec 0.10.2, the one starknet.js 10.5 accepts; the
+ * guide's lava endpoint is discontinued), and the MessageAnonymizer deployed
+ * 2026-09-07 with `pool` = this pool (DEPLOYMENTS.md § Mainnet).
  */
 export const MAINNET_WALLET_PRESET = {
   label: "Mainnet · wallet mode (STRK20 pool)",
   rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
-  helperAddress: "",
+  helperAddress: "0x030a2a39c47adba579c8fd07e7d9adbf5fe8f36b97da0b6ead884cae3a8bb3a6",
   poolAddress: "0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a",
   carrierToken: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   chainId: "0x534e5f4d41494e",

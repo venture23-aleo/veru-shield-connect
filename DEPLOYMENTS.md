@@ -63,20 +63,27 @@ same commit as any deployment. Explorer: prefix addresses/txs with `https://sepo
 
 ## Mainnet
 
-Nothing of ours deployed yet — see [docs/21](docs/21-mainnet-deployment-checklist.md) and `contracts/deploy/mainnet.sh`.
-Verified 2026-09-07: the mainnet pool invokes external contracts through `privacy_invoke`, the entry
-point this helper implements; fee 6 STRK per transaction; RPC `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`.
+### MessageAnonymizer — pool mode (**current**)
 
-STRK20 pool (external):
-`0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a`
-(full address recovered 2026-09-05 from AVNU's production frontend bundle; class
-`0x67dddd89d80fedadc06b6f160798f94800a4a70164e5a24301cd0d6076b554d`, also declared on Sepolia).
+| | |
+| --- | --- |
+| **Address** | [`0x030a2a39c47adba579c8fd07e7d9adbf5fe8f36b97da0b6ead884cae3a8bb3a6`](https://voyager.online/contract/0x030a2a39c47adba579c8fd07e7d9adbf5fe8f36b97da0b6ead884cae3a8bb3a6) |
+| Class hash | `0x0096558250259ea6ed253261f660a81e2041f98b2151dc54177cf8a854b08612` (same source and compiler as Sepolia Phase B → same class) |
+| Declare tx | [`0x040534693d8cbb2f9d871d5f3195fcdbaa51892c01ebc49e68900d485c69b6f7`](https://voyager.online/tx/0x040534693d8cbb2f9d871d5f3195fcdbaa51892c01ebc49e68900d485c69b6f7) — block 14,519,043, fee 4.85 STRK |
+| Deploy tx | [`0x07f38182c93bd902e8d3830b86a4f1acc0be90f629ba396e7ea3a513ae9fb8e8`](https://voyager.online/tx/0x07f38182c93bd902e8d3830b86a4f1acc0be90f629ba396e7ea3a513ae9fb8e8) — block 14,519,072, fee 0.052 STRK |
+| Constructor `pool` | `0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a` — **the mainnet STRK20 pool**; `pool()` verified to echo it after deploy |
+| Source | `contracts/src/message_anonymizer.cairo` (unchanged since `b39b66e`) |
+| Deployed | 2026-09-07, via `contracts/deploy/mainnet.sh` |
+| Deployer | `0x0227a359dd6dcdb1fb9e0d42c21118b0d54a332083fc419cd67ed042ea284729` (Ready X account; key in `contracts/.env`, git-ignored) |
+| Verification | Voyager source verification pending — `sncast verify` needs a `license` in `Scarb.toml` (the repo has no LICENSE yet) |
+| Mode | Pool mode only: the pool calls `privacy_invoke` through `InvokeExternal` (`CALLER_NOT_POOL` otherwise). The mainnet pool's class (`0x67dddd…554d`) was checked to call exactly this selector before deploying ([docs/21](docs/21-mainnet-deployment-checklist.md)). |
 
-## Benchmarks (measured on the deployments above)
+### External (not ours)
 
-| Tier | Tx | Fee |
+| Contract | Address | Note |
 | --- | --- | --- |
-| 256 B message | `0x2224a360cd80384332d0ead9d7f801e1d4142f40fd98e0814fb7a5302ff395` | 0.2076 STRK |
-| 4 KiB message | `0x32a7b35d2ebe87d12cb7c53110963e6c9cb89f3e5ae100f91b52292969afe91` | 2.3185 STRK |
+| **STRK20 pool** | `0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a` | class `0x67dddd89d80fedadc06b6f160798f94800a4a70164e5a24301cd0d6076b554d`; fee **6 STRK** per transaction (`get_fee_amount`) |
+| STRK | `0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` | fee token, same address as Sepolia |
+| RPC | `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10` | spec 0.10.2 — what starknet.js 10.5 accepts |
 
-Details and the L2-execution-gas finding: [docs/15-testnet-runbook.md](docs/15-testnet-runbook.md) § A6.
+Explorer: `https://voyager.online/contract/…`, `/tx/…`.

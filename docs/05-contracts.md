@@ -89,6 +89,17 @@ generated against a recent block snapshot and is rejected if the anchor is older
 `proof_validity_blocks`. With ~29 s of proving, that window must comfortably exceed proving
 plus submission time. See [D2](09-open-decisions.md#d2--the-proof-validity-window).
 
+### Deployed
+
+| Network | Address | Pool it is pinned to | Deploy tx |
+| --- | --- | --- | --- |
+| **Mainnet** | [`0x030a2a39…b3a6`](https://voyager.online/contract/0x030a2a39c47adba579c8fd07e7d9adbf5fe8f36b97da0b6ead884cae3a8bb3a6) | `0x040337b1…812a` (STRK20 mainnet pool) | [`0x07f38182…`](https://voyager.online/tx/0x07f38182c93bd902e8d3830b86a4f1acc0be90f629ba396e7ea3a513ae9fb8e8) · declare [`0x04053469…`](https://voyager.online/tx/0x040534693d8cbb2f9d871d5f3195fcdbaa51892c01ebc49e68900d485c69b6f7) |
+| Sepolia | [`0x016f77a5…f6e0b6`](https://sepolia.voyager.online/contract/0x016f77a566ed28f2945e315f2de971b8f3e83a03b93340e8927a311277f6e0b6) | `0x254a6b29…e0d91` (STRK20 Sepolia pool) | [`0x0425af6d…`](https://sepolia.voyager.online/tx/0x0425af6dad2ce028c83918ce64feee9d0351f4cd8a83325a6b934eaf19e6537e) |
+
+Full records, class hashes and fees: [DEPLOYMENTS.md](../DEPLOYMENTS.md). Mainnet was deployed
+2026-09-07 with the same class as Sepolia after checking that the mainnet pool's newer class
+still invokes external contracts through `privacy_invoke` ([21](21-mainnet-deployment-checklist.md)).
+
 ## Cost sketch
 
 The dominant on-chain cost is **storage**: one WriteOnce slot per 31 bytes of payload, billed

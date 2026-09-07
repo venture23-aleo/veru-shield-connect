@@ -123,7 +123,8 @@ those names onto the design tokens, so they took the new look without a rewrite.
 
 ## Wallet mode (Ready)
 
-Settings → **Wallet** → pick the Sepolia or mainnet preset → **Connect Ready**. The wallet
+Settings → **Wallet** → pick the Sepolia or mainnet preset → **Connect Ready**. The mainnet
+preset points at the helper deployed 2026-09-07, `0x030a2a39…b3a6` (DEPLOYMENTS.md). The wallet
 signs and proves through the STRK20 wallet API (`wallet_strk20InvokeTransaction`); no private
 key or viewing key is pasted anywhere. Settings probes the wallet for STRK20 support and tells
 you if the account still needs to shield once to register. Trade-offs and the method table are
