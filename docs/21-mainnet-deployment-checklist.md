@@ -102,7 +102,7 @@ and registrations do **not** qualify.
 
 - [ ] 3-minute demo video recorded on mainnet, link in `strk20.json → demo_video`.
 - [ ] GitHub Pages enabled (Settings → Pages → Source: GitHub Actions) so the demo URL resolves; or set the repo's Website field.
-- [ ] `LICENSE` file at the root (still missing — counts toward the open-source score).
+- [x] `LICENSE.md` (MIT) at the root.
 
 ## Rollback and gotchas
 
