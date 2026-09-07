@@ -20,6 +20,8 @@ export interface SubmitOptions {
    * omitted for group lanes (carrier to self).
    */
   setupPeer?: string;
+  /** Cancel while still proving locally (demo). Real backends ignore it past submission. */
+  signal?: AbortSignal;
 }
 
 export interface PoolTransfer {
@@ -170,18 +172,19 @@ export class DemoBackend implements Backend {
     blockNumber: async () => this.load().block,
   };
 
-  async submitBatch(sealed: Sealed[], onState: (s: SubmitState) => void): Promise<{ txHash: string }> {
-    return this.transact(sealed, onState, (chain) => chain);
+  async submitBatch(sealed: Sealed[], onState: (s: SubmitState) => void, opts: SubmitOptions = {}): Promise<{ txHash: string }> {
+    return this.transact(sealed, onState, (chain) => chain, opts.signal);
   }
 
-  /** The simulated transaction: prove (visibly), submit, then apply `mutate` and the slot writes atomically. */
+  /** The simulated transaction: prove (visibly, cancellable), submit, then apply `mutate` and the slot writes atomically. */
   private async transact(
     sealed: Sealed[],
     onState: (s: SubmitState) => void,
-    mutate: (chain: DemoChain) => DemoChain
+    mutate: (chain: DemoChain) => DemoChain,
+    signal?: AbortSignal
   ): Promise<{ txHash: string }> {
     onState("proving");
-    await delay(this.provingSeconds * 1000);
+    await delayCancellable(this.provingSeconds * 1000, signal);
     onState("submitted");
     await delay(1200);
     const chain = mutate(this.load());
@@ -346,4 +349,20 @@ function sameToken(a: string, b: string): boolean {
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** A wait that a cancel can interrupt — proving in the demo is the only cancellable phase. */
+function delayCancellable(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new DOMException("Flush cancelled", "AbortError"));
+    if (signal?.aborted) return abort();
+    const t = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(t);
+      abort();
+    });
+  });
 }

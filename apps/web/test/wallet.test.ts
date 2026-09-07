@@ -272,3 +272,13 @@ describe("viewing key from a wallet signature — deterministic, in the curve or
     expect(req.params.domain.chainId).toBe("0x534e5f5345504f4c4941");
   });
 });
+
+describe("walletWaitText — expectation-setting from elapsed time and the remembered typical duration", () => {
+  it("phases: approve → proving (with the typical time) → longer than usual", async () => {
+    const { walletWaitText } = await import("../src/lib/walletBackend.js");
+    expect(walletWaitText(3, 80, "Ready X")).toMatch(/approve the prompt/);
+    expect(walletWaitText(30, 80, "Ready X")).toMatch(/usually ~80 s/);
+    expect(walletWaitText(140, 80, "Ready X")).toMatch(/longer than usual/);
+    expect(walletWaitText(30, null, "Ready X")).toMatch(/first send here/);
+  });
+});

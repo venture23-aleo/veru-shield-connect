@@ -105,6 +105,22 @@ What pool mode changes in the UI, and why:
 - **The viewing key is the identity.** It is what `SetViewingKey` registers on first use and
   what every note and channel derives from; the wrong key doesn't fail, it sees nothing.
 
+## UI
+
+The interface is the VeruShield Connect design from `feat/updated-frontend`, merged onto the
+pool, payments and wallet work: Tailwind v4 (`@tailwindcss/vite`), Phosphor icons, a workspace
+shell with a collapsible rail (Conversations · Privacy trade-offs · Compliance disclosure ·
+Settings), a top status bar and footer that show the **real** connection (mode, network, block,
+STRK balance, registration), a splash, and mobile list/thread switching.
+
+Every number in the chrome is live state — nothing decorative. The trade-offs page reads the
+current connection and says what is private (recipient after the first message, amount,
+content) and what is public (the paying account, size, timing, the auditor's escrow).
+
+Screens with dense forms — the connection editor, the pay / request / split panels, the wallet
+onboarding — keep their original class names inside a `.legacy` container; `styles.css` maps
+those names onto the design tokens, so they took the new look without a rewrite.
+
 ## Wallet mode (Ready)
 
 Settings → **Wallet** → pick the Sepolia or mainnet preset → **Connect Ready**. The wallet

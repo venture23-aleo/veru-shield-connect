@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -96,7 +97,10 @@ const sdkZeroNotePatch: Plugin = {
 };
 
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), sdkZeroNotePatch],
+  // GitHub Pages serves a project site under /<repo>/ — the deploy workflow
+  // sets VITE_BASE; everywhere else the app lives at the root.
+  base: process.env.VITE_BASE ?? "/",
+  plugins: [react(), tailwindcss(), sdkZeroNotePatch],
   resolve: {
     // Exact matches: Vite aliases match by PREFIX, so a bare `privacy-sdk`
     // entry would also rewrite `privacy-sdk/hashes` into `…/index.js/hashes`.

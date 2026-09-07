@@ -17,7 +17,7 @@ import {
 } from "@strk20-messaging/sdk";
 import { DemoBackend, DirectBackend, type Backend } from "./backend.js";
 import { PoolBackend } from "./poolBackend.js";
-import { WalletBackend } from "./walletBackend.js";
+import { WalletBackend, typicalWalletSeconds } from "./walletBackend.js";
 import { exportBackup, parseBackup } from "./backup.js";
 import type { Contact } from "./contacts.js";
 import { groupLanes, myLane, type Group, type GroupInvite, type GroupMember } from "./groups.js";
@@ -36,6 +36,14 @@ export interface AppConfig {
   accountAddress: string;
   /** Honest by default; adjustable in settings for demos. */
   provingSeconds: number;
+  /**
+   * Demo-mode presentation of the real trade-off: a hosted prover sees the
+   * witness, the app's own prover keeps it local; real modes are decided by
+   * the connection (pool = app prover, wallet = the wallet proves).
+   */
+  provingMode?: "hosted" | "self";
+  /** Presentation only: this app always submits from your own account (Arch 1); a paymaster would hide the payer. */
+  submissionMode?: "paymaster" | "direct";
   rpcUrl?: string;
   helperAddress?: string;
   accountKey?: string;
@@ -68,7 +76,7 @@ export interface AppConfig {
 }
 
 export interface FlushProgress {
-  phase: "idle" | "proving" | "submitted" | "confirmed" | "failed";
+  phase: "idle" | "encrypting" | "proving" | "submitted" | "confirmed" | "failed";
   startedAt?: number;
   secondsTotal?: number;
   txHash?: string;
@@ -127,6 +135,7 @@ export class AppStore {
 
   backend: Backend | null = null;
   engine: SyncEngine | null = null;
+  private flushAbort: AbortController | null = null;
 
   constructor() {
     this.config = readJson<AppConfig>(CONFIG_KEY);
@@ -222,6 +231,12 @@ export class AppStore {
     return new DemoBackend(cfg.provingSeconds);
   }
 
+  /** The wait to show for a proof: the wallet's own typical time in wallet mode, else the configured seconds. */
+  get provingSecondsHint(): number {
+    if (this.config?.mode === "wallet") return typicalWalletSeconds() ?? 90;
+    return this.config?.provingSeconds ?? 29;
+  }
+
   get isPool(): boolean {
     return this.config?.mode === "pool" && !!this.backend?.pool;
   }
@@ -296,7 +311,7 @@ export class AppStore {
    */
   async registerSelf(): Promise<void> {
     if (!this.isPool || this.flush.phase === "proving" || this.flush.phase === "submitted") return;
-    this.flush = { phase: "proving", startedAt: Date.now(), secondsTotal: this.config!.provingSeconds };
+    this.flush = { phase: "proving", startedAt: Date.now(), secondsTotal: this.provingSecondsHint };
     this.notify();
     try {
       const { txHash } = await this.backend!.pool!.registerSelf((state) => {
@@ -322,6 +337,41 @@ export class AppStore {
     this.connect();
     void this.backend!.register(this.config.accountAddress);
     this.notify();
+  }
+
+  /**
+   * Wipe this browser's session (keys, contacts, outbox, sync, demo chain) and
+   * return to onboarding. On-chain messages stay; without a backup you cannot
+   * decrypt them here again.
+   */
+  disconnect(): void {
+    for (const key of [CONFIG_KEY, CONTACTS_KEY, GROUPS_KEY, OUTBOX_KEY, SYNC_KEY, "strk20msg.demo.chain"]) {
+      localStorage.removeItem(key);
+    }
+    this.config = null;
+    this.contacts = [];
+    this.groups = [];
+    this.outbox = new Outbox(new LsOutboxStore());
+    this.flush = { phase: "idle" };
+    this.syncing = false;
+    this.backend = null;
+    this.engine = null;
+    this.selfRegistered = null;
+    this.strkBalance = null;
+    this.notify();
+  }
+
+  /** Cancel only while encrypting/proving locally (before chain submission). */
+  cancelFlush(): void {
+    if (this.flush.phase === "encrypting" || this.flush.phase === "proving") this.flushAbort?.abort();
+  }
+
+  /** Pending outbox rows for a contact label or #group, oldest first. */
+  pendingFor(to: string): OutboxEntry[] {
+    return this.outbox
+      .list()
+      .filter((e) => e.to === to && e.status !== "confirmed")
+      .sort((a, b) => a.queuedAt - b.queuedAt);
   }
 
   /** Switch mode / connection details (Settings) and reconnect the backend. */
@@ -490,8 +540,10 @@ export class AppStore {
   /** Flush every queued message: one transaction per contact lane. */
   async sendBatch(): Promise<void> {
     const queued = this.outbox.take();
-    if (queued.length === 0 || this.flush.phase === "proving") return;
+    if (queued.length === 0 || this.flush.phase === "proving" || this.flush.phase === "encrypting") return;
     const cfg = this.config!;
+    this.flushAbort = new AbortController();
+    const signal = this.flushAbort.signal;
 
     try {
       const byLane = new Map<string, { display: string; entries: OutboxEntry[]; contact?: Contact }>();
@@ -518,6 +570,9 @@ export class AppStore {
           index += 16;
         }
 
+        this.flush = { phase: "encrypting", startedAt: Date.now(), secondsTotal: this.provingSecondsHint };
+        this.outbox.mark(entries.map((e) => e.id), "proving");
+        this.notify();
         const items: { entry: OutboxEntry; sealed: Sealed; index: number }[] = entries.map(
           (entry, k) => ({
             entry,
@@ -536,7 +591,7 @@ export class AppStore {
         this.flush = {
           phase: "proving",
           startedAt: Date.now(),
-          secondsTotal: cfg.provingSeconds,
+          secondsTotal: this.provingSecondsHint,
         };
         this.outbox.mark(ids, "proving");
         this.notify();
@@ -552,7 +607,7 @@ export class AppStore {
             this.outbox.mark(ids, state);
             this.notify();
           },
-          setupPeer ? { setupPeer } : {}
+          { ...(setupPeer ? { setupPeer } : {}), signal }
         );
 
         this.outbox.mark(ids, "confirmed", {
@@ -582,8 +637,11 @@ export class AppStore {
       // double-send self-defeating anyway: a re-flush re-walks the indices.)
       const stuck = [...this.outbox.list("proving"), ...this.outbox.list("submitted")].map((e) => e.id);
       if (stuck.length) this.outbox.mark(stuck, "queued");
-      this.flush = { phase: "failed", error: errorSummary(err) };
+      const cancelled = err instanceof DOMException && err.name === "AbortError";
+      this.flush = cancelled ? { phase: "idle" } : { phase: "failed", error: errorSummary(err) };
       this.notify();
+    } finally {
+      this.flushAbort = null;
     }
   }
 
@@ -609,7 +667,7 @@ export class AppStore {
         timestamp: BigInt(Math.floor(Date.now() / 1000)),
         body: encodePaymentMemo(BigInt(token), amount, memo),
       });
-      this.flush = { phase: "proving", startedAt: Date.now(), secondsTotal: cfg.provingSeconds };
+      this.flush = { phase: "proving", startedAt: Date.now(), secondsTotal: this.provingSecondsHint };
       this.notify();
       const { txHash } = await this.backend!.pool!.pay(
         { token, recipient: contact.peer, amount },
@@ -675,7 +733,7 @@ export class AppStore {
         timestamp: BigInt(Math.floor(Date.now() / 1000)),
         body: encodePaymentMemo(BigInt(token), amountEach, `to ${names}${memo.trim() ? ` — ${memo.trim()}` : ""}`),
       });
-      this.flush = { phase: "proving", startedAt: Date.now(), secondsTotal: cfg.provingSeconds };
+      this.flush = { phase: "proving", startedAt: Date.now(), secondsTotal: this.provingSecondsHint };
       this.notify();
       const { txHash } = await this.backend!.pool!.payMany(
         recipients.map((r) => ({ token, recipient: r.address, amount: amountEach })),
@@ -699,7 +757,7 @@ export class AppStore {
   /** Public → private: approve + proven Deposit. Progress rides the flush bar. */
   async shield(token: string, amount: bigint): Promise<void> {
     if (!this.canPay || this.flush.phase === "proving" || this.flush.phase === "submitted") return;
-    this.flush = { phase: "proving", startedAt: Date.now(), secondsTotal: this.config!.provingSeconds };
+    this.flush = { phase: "proving", startedAt: Date.now(), secondsTotal: this.provingSecondsHint };
     this.notify();
     try {
       const { txHash } = await this.backend!.pool!.shield(token, amount, (state) => {

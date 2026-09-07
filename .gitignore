@@ -6,3 +6,12 @@ dist/
 target/
 .snfoundry_cache/
 .devnet-env.local.json
+
+# Local Netlify folder
+.netlify
+.claude
+.cursor
+.agents/
+**/.agents/
+apps/web/stitch/
+apps/web/design-system/

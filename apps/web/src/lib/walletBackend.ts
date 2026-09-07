@@ -26,6 +26,42 @@ export interface WalletSettings {
   carrierToken?: string;
 }
 
+const TIMING_KEY = "verushield.wallet.provingSeconds";
+
+/** Seconds a full wallet round (prompt → proof → submit) has taken here before; median of the last five. */
+export function typicalWalletSeconds(): number | null {
+  try {
+    const list = JSON.parse(localStorage.getItem(TIMING_KEY) ?? "[]") as number[];
+    if (!Array.isArray(list) || list.length === 0) return null;
+    const sorted = [...list].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberWalletSeconds(seconds: number): void {
+  try {
+    const list = (JSON.parse(localStorage.getItem(TIMING_KEY) ?? "[]") as number[]).filter((n) => Number.isFinite(n));
+    list.push(Math.round(seconds));
+    localStorage.setItem(TIMING_KEY, JSON.stringify(list.slice(-5)));
+  } catch {
+    /* no storage */
+  }
+}
+
+/**
+ * What to tell the user while the wallet works, from the only two things we
+ * know: seconds elapsed, and how long it usually takes here. The wallet
+ * exposes no phase, so this is expectation-setting, not telemetry.
+ */
+export function walletWaitText(elapsed: number, typical: number | null, walletName: string): string {
+  if (elapsed < 12) return `approve the prompt in ${walletName}`;
+  if (typical === null) return `${walletName} is generating the proof — the first send here sets the expectation (often 60–120 s)`;
+  if (elapsed > typical * 1.6) return `taking longer than usual (typically ~${typical} s) — is the ${walletName} popup still open? If it timed out, the app keeps watching the chain for this message`;
+  return `${walletName} is generating the proof — usually ~${typical} s here`;
+}
+
 export class WalletBackend implements Backend {
   private readonly providerP: Promise<RpcProvider>;
   readonly reader: SlotReader;
@@ -133,9 +169,26 @@ export class WalletBackend implements Backend {
 
   private async submit(onState: (s: SubmitState) => void, actions: ReturnType<typeof buildActions>, sealed: Sealed[] = []): Promise<{ txHash: string }> {
     onState("proving"); // the wallet proves and signs behind its own prompt
+    const started = Date.now();
     let txHash: string;
     try {
-      ({ txHash } = await strk20Submit(this.wallet(), actions));
+      // The wallet may submit and only then stall on answering. Watch the
+      // helper's slots in parallel: the moment the message is on-chain it is
+      // confirmed, whether or not the wallet has said so yet.
+      let walletDone = false;
+      const walletP = strk20Submit(this.wallet(), actions);
+      const landedP = sealed.length ? this.waitForSlots(sealed, 10 * 60_000, () => walletDone).then((ok) => (ok ? { txHash: WALLET_TIMEOUT_TX } : null)) : new Promise<null>(() => {});
+      const first = await Promise.race([walletP.then((r) => ({ txHash: r.txHash })).finally(() => (walletDone = true)), landedP]);
+      if (first === null) throw new Error("unreachable");
+      if (first.txHash === WALLET_TIMEOUT_TX) {
+        // On-chain before the wallet answered: swallow whatever the wallet says later.
+        walletP.catch(() => {});
+        rememberWalletSeconds((Date.now() - started) / 1000);
+        onState("submitted");
+        return first;
+      }
+      ({ txHash } = first);
+      rememberWalletSeconds((Date.now() - started) / 1000);
     } catch (err) {
       // A wallet timeout is ambiguous: proving took too long, the prompt sat
       // unanswered — or it DID submit and only the answer was lost. Sending
@@ -218,11 +271,12 @@ export class WalletBackend implements Backend {
     return newest < 0 ? null : head - newest;
   }
 
-  /** Poll the helper for every sealed message's slot; true once all are written. */
-  private async waitForSlots(sealed: Sealed[], maxMs: number): Promise<boolean> {
+  /** Poll the helper for every sealed message's slot; true once all are written. `stop` ends the wait early (false). */
+  private async waitForSlots(sealed: Sealed[], maxMs: number, stop?: () => boolean): Promise<boolean> {
     const ids = sealed.map((s) => s.msgId);
     const until = Date.now() + maxMs;
     while (Date.now() < until) {
+      if (stop?.()) return false;
       try {
         const lens = await this.reader.slotLens(ids);
         if (lens.every((l) => l > 0)) return true;
