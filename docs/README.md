@@ -38,6 +38,7 @@ throughout and collected in [09-open-decisions.md](09-open-decisions.md).
 | [17-pool-mode-test-plan.md](17-pool-mode-test-plan.md) | Every pool-mode property to test, with what is automated, manual, missing, or blocked |
 | [19-payments-in-chat.md](19-payments-in-chat.md) | Pay, request, split/tip and receipts inside a thread — formats, settlement, what stays private |
 | [20-wallet-mode.md](20-wallet-mode.md) | Braavos / Ready through the STRK20 wallet API — no keys in the app, what it trades away |
+| [21-mainnet-deployment-checklist.md](21-mainnet-deployment-checklist.md) | Deploying the helper on mainnet: verified facts, costs, guarded script, and the three scored transactions |
 
 ## The one-paragraph version
 

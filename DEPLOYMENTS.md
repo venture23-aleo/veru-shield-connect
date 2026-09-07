@@ -63,7 +63,11 @@ same commit as any deployment. Explorer: prefix addresses/txs with `https://sepo
 
 ## Mainnet
 
-Nothing of ours deployed. STRK20 pool (external):
+Nothing of ours deployed yet — see [docs/21](docs/21-mainnet-deployment-checklist.md) and `contracts/deploy/mainnet.sh`.
+Verified 2026-09-07: the mainnet pool invokes external contracts through `privacy_invoke`, the entry
+point this helper implements; fee 6 STRK per transaction; RPC `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`.
+
+STRK20 pool (external):
 `0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a`
 (full address recovered 2026-09-05 from AVNU's production frontend bundle; class
 `0x67dddd89d80fedadc06b6f160798f94800a4a70164e5a24301cd0d6076b554d`, also declared on Sepolia).
