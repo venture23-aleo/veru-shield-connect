@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { batchPreview, fmtUsd } from "../lib/costs.js";
+import { explorerTxUrl } from "../lib/explorer.js";
 import { store } from "../lib/store.js";
 import type { Bucket } from "@strk20-messaging/sdk";
 
@@ -48,7 +49,9 @@ export function OutboxBar() {
     return (
       <footer className="outbox idle">
         {flush.phase === "confirmed" && flush.txHash && (
-          <span className="confirmed-note">✓ batch confirmed · tx {flush.txHash.slice(0, 12)}…</span>
+          <span className="confirmed-note">
+            ✓ batch confirmed · <TxLink hash={flush.txHash} />
+          </span>
         )}
         {flush.phase === "failed" && <span className="error">send failed: {flush.error}</span>}
         {flush.phase === "idle" && <span className="hint">Outbox empty — drafts queue here and send as one batch.</span>}
@@ -59,6 +62,11 @@ export function OutboxBar() {
   const preview = batchPreview(tiers, cfg.provingSeconds);
   return (
     <footer className="outbox ready">
+      {flush.phase === "failed" && (
+        <span className="error" style={{ flexBasis: "100%" }}>
+          last send failed — messages are back in the queue: {flush.error}
+        </span>
+      )}
       <span>
         <strong>Outbox · {preview.count} message{preview.count > 1 ? "s" : ""} queued</strong>
         {"  "}~{preview.seconds} s · {fmtUsd(preview.usd)} · one transaction
@@ -67,6 +75,22 @@ export function OutboxBar() {
         Send batch
       </button>
     </footer>
+  );
+}
+
+/** The confirmed transaction, as a link to the explorer when there is one. */
+function TxLink({ hash }: { hash: string }) {
+  if (!hash.startsWith("0x")) {
+    return <span title="the wallet answered Timeout, but the message was found on-chain; the wallet did not return the hash">confirmed on-chain (hash held by the wallet)</span>;
+  }
+  const url = explorerTxUrl(store.config!, hash);
+  const short = `tx ${hash.slice(0, 10)}…${hash.slice(-6)}`;
+  return url ? (
+    <a href={url} target="_blank" rel="noreferrer" title={hash}>
+      {short} ↗
+    </a>
+  ) : (
+    <code title={hash}>{short}</code>
   );
 }
 

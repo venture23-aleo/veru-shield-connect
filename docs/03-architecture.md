@@ -11,7 +11,7 @@ graph TB
   subgraph offchain["Off-chain services"]
     PRV["Proving service<br/>Stwo · sees the signed invocation"]
     IDX["Discovery indexer<br/>channel scan · OHTTP"]
-    PM["Paymaster<br/>submits from its own address"]
+    PM["Payer's own account<br/>submits — public by design (v1)"]
     RPC["Starknet RPC<br/>starknet_getStorageAt"]
   end
 
@@ -47,7 +47,9 @@ deployed, operated by others, or plain infrastructure.
    a virtual Starknet environment and returns a STARK proof. **This takes roughly 29 s on a
    12-core / 46 GiB machine** and is the dominant latency in the system. Note the service sees
    the witness — self-host for sensitive deployments. See [08-submission.md](08-submission.md#proving-latency-is-the-ux).
-5. **Submit.** A paymaster relays the transaction, so the public submitter is not the author.
+5. **Submit.** The payer submits from their own account — public by design in v1
+   ([16](16-arch1-plan.md)); the recipient and the amount are what the proof hides. A
+   paymaster relay remains the documented route to sender anonymity ([08](08-submission.md)).
 6. **Settle.** Starknet verifies the proof in-protocol; the pool checks proof facts and anchor
    recency, then calls `privacy_invoke`. The helper asserts `caller == pool`, writes each
    payload to its derived WriteOnce slot, and returns an `OpenNoteDeposit` span — empty for a
@@ -89,6 +91,7 @@ derived slots, and returns. All cryptography is off-chain and auditable in TypeS
 **Discovery must work with nothing but an RPC URL.** Any service we add must be an
 optimisation the user can decline.
 
-**Failures degrade to latency, never to disclosure.** If the paymaster is down, the user may
-submit directly — losing submitter anonymity, keeping content confidentiality and the pool's
-own sender anonymity. This must be an explicit choice.
+**Failures degrade to latency, never to disclosure.** In v1 the payer already submits
+directly, so there is no paymaster to lose; a proving-service outage means the payment waits,
+it does not mean anything about the recipient or the amount becomes visible. If a paymaster
+is reintroduced, falling back to direct submission must be an explicit choice, as before.

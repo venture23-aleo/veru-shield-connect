@@ -53,7 +53,7 @@ input, textarea { font: inherit; border: 1px solid var(--line); border-radius: 8
 .disclosure input { width: auto; margin-top: 3px; }
 .disclosure p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
 .onboarding .primary { margin-top: 12px; }
-.key-choices { display: flex; gap: 10px; }
+.key-choices { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .restore textarea { margin-bottom: 8px; }
 .key-summary p { margin: 8px 0; }
 
@@ -117,7 +117,7 @@ input, textarea { font: inherit; border: 1px solid var(--line); border-radius: 8
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 14px; margin-top: 9px; }
 
 /* mode picker */
-.mode-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+.mode-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
 .mode-card { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 10px 12px; border-radius: 10px; }
 .mode-card span { font-size: 12px; color: var(--muted); }
 .mode-card.selected { border-color: var(--accent); background: #f0f2ff; }
@@ -133,3 +133,43 @@ input.invalid { border-color: var(--error); }
 .probe-err { color: var(--error); font-size: 13px; }
 .field .row { align-items: stretch; flex-wrap: nowrap; }
 .field .row input { flex: 1; }
+
+/* pool mode: payments and the pay panel */
+.bubble-payment { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+.bubble.sent .bubble-payment { opacity: 0.95; }
+.pay-panel { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 0 12px 10px; }
+.pay-panel input { flex: 1; min-width: 140px; }
+.pay-panel .hint { flex-basis: 100%; }
+.badge.info { background: #eef1ff; color: var(--accent); }
+
+/* pool mode: registration-only transaction, offered until done */
+.register-banner { flex-basis: 100%; display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 8px 12px; margin-top: 6px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
+.register-banner code { color: inherit; }
+.chrome { flex-wrap: wrap; }
+.register-banner.mismatch { background: #fde8e8; color: var(--error); }
+.balance-chip { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--received); cursor: pointer; }
+.balance-chip.low { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+
+/* payments in threads: requests, receipts, splits */
+.bubble.value { border: 1px solid rgba(61, 90, 254, 0.25); }
+.bubble.received.value { background: #f3f5ff; }
+.bubble-actions { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+.bubble-actions .settled { color: var(--ok); font-weight: 600; font-size: 13px; }
+.bubble.sent .bubble-actions .settled, .bubble.sent .bubble-actions .hint { color: var(--sent-ink); opacity: 0.85; }
+button.small { padding: 4px 10px; font-size: 13px; }
+.receipt { font-size: 12px; margin-top: 5px; color: var(--muted); }
+.receipt.ok { color: var(--ok); }
+.receipt.pending { color: var(--warn); }
+.pay-panel .members { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.member-pick { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
+
+/* wallet mode */
+.wallet-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
+.wallet-row img { width: 22px; height: 22px; border-radius: 6px; }
+.wallet-choice { display: inline-flex; align-items: center; gap: 8px; }
+.wallet-choice img { width: 20px; height: 20px; border-radius: 5px; }
+.diag { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+.diag li { margin: 3px 0; word-break: break-word; }
+.button-link { display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--accent); font-size: 14px; }
+.button-link.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.shield-box { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg, #fafafa); }

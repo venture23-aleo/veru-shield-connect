@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useState } from "react";
+import { useEffect, useSyncExternalStore, useState } from "react";
 import { store } from "./lib/store.js";
 import { Chrome } from "./ui/Chrome.js";
 import { GroupView } from "./ui/GroupView.js";
@@ -12,6 +12,12 @@ export function App() {
   useSyncExternalStore(store.subscribe, store.getVersion);
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  // Wallet mode without a helper address (mainnet, before deployment) has
+  // nowhere to write: open Settings so the gap is visible, not silent.
+  const needsSetup = store.config?.onboarded === true && store.config.mode === "wallet" && !store.config.helperAddress;
+  useEffect(() => {
+    if (needsSetup) setShowSettings(true);
+  }, [needsSetup]);
 
   if (!store.config?.onboarded) return <Onboarding />;
 

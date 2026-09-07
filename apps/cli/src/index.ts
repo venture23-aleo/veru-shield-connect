@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {
+  discoverChannels,
   flushOutbox,
   formatAge,
   fullHistory,
@@ -12,7 +13,18 @@ import {
   syncStatus,
 } from "./commands.js";
 import { configDir, loadConfig, saveConfig, type CliConfig } from "./config.js";
-import type { Bucket } from "@strk20-messaging/sdk";
+import { decodePaymentMemo, type Bucket } from "@strk20-messaging/sdk";
+
+/**
+ * A body sealed by `pay` carries its transfer inside the ciphertext, so it
+ * renders as a payment; anything else is a plain message (payment.ts).
+ */
+function renderBody(body: Uint8Array): string {
+  const payment = decodePaymentMemo(body);
+  if (!payment) return `"${new TextDecoder().decode(body)}"`;
+  const token = "0x" + payment.token.toString(16);
+  return `${payment.amount} of ${token.slice(0, 10)}… · "${payment.text}"`;
+}
 
 function flag(args: string[], name: string): string | undefined {
   const i = args.indexOf(`--${name}`);
@@ -32,6 +44,7 @@ const USAGE = `msg — encrypted messaging over the STRK20 privacy pool
 
   msg init --rpc <url> --helper <addr> --account <addr> [--mode direct|pool]
   msg channel add --label <name> --peer <addr> --key <channel key hex>
+  msg channel discover              pull channel keys from the pool's scan (pool mode)
   msg channel list
   msg send --to <label|addr> [--pad 256|1024|4096] "text"
   msg queue --to <label|addr> [--pad 256|1024|4096] "text"
@@ -86,12 +99,25 @@ async function main(argv: string[]): Promise<number> {
         console.log(`channel "${label}" -> ${peer} added`);
         return 0;
       }
+      if (sub === "discover") {
+        const { added, known } = await discoverChannels({ log: (l) => console.log(l) });
+        console.log(
+          added === 0
+            ? `no new channels (${known} known)`
+            : `${added} channel(s) added (${known} known)`
+        );
+        return 0;
+      }
       if (sub === "list") {
-        for (const c of cfg.channels) console.log(`${c.label}\t${c.peer}\tkey: [redacted]`);
+        for (const c of cfg.channels) {
+          const how = c.discovered ? "discovered" : "manual";
+          const dir = c.direction ? ` ${c.direction}` : "";
+          console.log(`${c.label}\t${c.peer}\tkey: [redacted]\t(${how}${dir})`);
+        }
         if (cfg.channels.length === 0) console.log("(no channels)");
         return 0;
       }
-      console.error("unknown channel subcommand; use add or list");
+      console.error("unknown channel subcommand; use add, discover or list");
       return 2;
     }
 
@@ -185,8 +211,8 @@ async function main(argv: string[]): Promise<number> {
       let n = 0;
       for (const r of records) {
         n++;
-        const body = Buffer.from(r.bodyBase64, "base64").toString("utf8");
-        console.log(`[${n}] from ${r.sender} · ${formatAge(BigInt(r.timestamp))} · "${body}"`);
+        const body = new Uint8Array(Buffer.from(r.bodyBase64, "base64"));
+        console.log(`[${n}] from ${r.sender} · ${formatAge(BigInt(r.timestamp))} · ${renderBody(body)}`);
       }
       return 0;
     }
@@ -213,8 +239,9 @@ async function main(argv: string[]): Promise<number> {
         for (const m of r.messages) {
           n++;
           const sender = "0x" + m.frame.sender.toString(16);
-          const body = new TextDecoder().decode(m.frame.body);
-          console.log(`[${n}] from ${sender} · ${formatAge(m.frame.timestamp)} · "${body}"`);
+          console.log(
+            `[${n}] from ${sender} · ${formatAge(m.frame.timestamp)} · ${renderBody(m.frame.body)}`
+          );
         }
       }
       return 0;

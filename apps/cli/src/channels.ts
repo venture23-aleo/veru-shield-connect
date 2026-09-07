@@ -1,28 +1,9 @@
-import type { CliConfig } from "./config.js";
+import { viewingKey, type CliConfig } from "./config.js";
+import { createTransfers } from "./poolClient.js";
 
-/**
- * Channel discovery wiring (M5). The Privacy SDK's factory, when handed a
- * discovery CONFIG, constructs IndexerDiscoveryProvider WITHOUT the ohttp
- * option — so we always construct the provider instance ourselves.
- * OHTTP is the default, not an option (07-discovery.md): it hides the
- * client's IP from the discovery service and costs nothing.
- */
-export interface DiscoveryOptions {
-  url: string;
-  ohttp: boolean | { relayUrl?: string };
-}
-
-export function discoveryOptions(cfg: {
-  discoveryUrl: string;
-  ohttp?: boolean | { relayUrl?: string };
-}): DiscoveryOptions {
-  if (cfg.ohttp === false) {
-    // Explicit opt-out is honored but loud: the discovery service sees your IP.
-    console.error("warning: OHTTP disabled — the discovery service can see your IP address");
-    return { url: cfg.discoveryUrl, ohttp: false };
-  }
-  return { url: cfg.discoveryUrl, ohttp: cfg.ohttp ?? true };
-}
+// The OHTTP rule now lives with the SDK factory, so proving and discovery
+// cannot drift apart. Re-exported: this is still the discovery-facing name.
+export { discoveryOptions, type DiscoveryOptions } from "./poolClient.js";
 
 export interface DiscoveredChannel {
   peer: string;
@@ -31,56 +12,39 @@ export interface DiscoveredChannel {
 }
 
 /**
- * Wire `transfers.discoverChannels` with cursor pagination. Live only in pool
- * mode with an indexer URL configured; channel discovery is the one half of
- * discovery that needs a service today (ContractDiscoveryProvider is not yet
- * exported from the published SDK).
+ * Channel discovery — the recipient's ONLY route to a channel key.
+ *
+ * Only the sender can *derive* `channel_key` (M0 § S4); the recipient obtains
+ * it by decrypting the channel record during the pool's scan. Until this runs,
+ * an incoming channel is invisible and its messages unreadable, however many
+ * of them are sitting in helper storage.
  */
 export async function discoverChannelsFromPool(
-  cfg: CliConfig,
-  viewingKey: bigint
+  cfg: CliConfig
 ): Promise<{ channels: DiscoveredChannel[]; timestamp: unknown }> {
-  const poolCfg = cfg.pool;
-  if (!poolCfg) throw new Error("channel discovery needs config.pool (mode 'pool')");
-  const discoveryUrl = (poolCfg as { discoveryUrl?: string }).discoveryUrl;
-  if (!discoveryUrl) throw new Error("config.pool.discoveryUrl is required for channel discovery");
-
-  const { pathToFileURL } = await import("node:url");
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const sdk = (await import(pathToFileURL(`${poolCfg.sdkPath}/sdk/dist/index.js`).href)) as any;
-
-  const opts = discoveryOptions({
-    discoveryUrl,
-    ohttp: (poolCfg as { ohttp?: boolean }).ohttp,
-  });
-  const provider = new sdk.IndexerDiscoveryProvider(opts.url, poolCfg.poolAddress, {
-    ohttp: opts.ohttp,
-  });
-  const transfers = sdk.createPrivateTransfers({
-    poolAddress: poolCfg.poolAddress,
-    discoveryProvider: provider,
-    viewingKeyProvider: { getViewingKey: async () => viewingKey },
-    ...(poolCfg.provingUrl ? { provingUrl: poolCfg.provingUrl } : {}),
-  });
-
+  const vk = viewingKey(cfg); // fail here, with a useful message, not inside the SDK
+  const { transfers, discovery } = await createTransfers(cfg);
+  const me = BigInt(cfg.account.address);
+  const hex = (v: bigint) => "0x" + v.toString(16);
   const channels: DiscoveredChannel[] = [];
-  let cursor: unknown;
-  let timestamp: unknown;
-  for (;;) {
-    const page = await transfers.discoverChannels("all", cursor ? { cursor } : {});
-    timestamp = page.timestamp;
-    if (page.channels) {
-      for (const [peer, ch] of page.channels.entries?.() ?? Object.entries(page.channels)) {
-        channels.push({
-          peer: String(peer),
-          channelKey: "0x" + BigInt(ch.key ?? ch.channelKey).toString(16),
-          direction: ch.direction === "outgoing" ? "out" : "in",
-        });
-      }
-    }
-    const next = (page as { cursor?: unknown }).cursor;
-    if (!next || (page.channels && Object.keys(page.channels).length === 0)) break;
-    cursor = next;
+
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  // Outgoing: `discoverChannels` enumerates OUR channels, keyed by recipient.
+  // (Verified on devnet: it never returns incoming ones.)
+  const out: any = await transfers.discoverChannels("all", {});
+  for (const [addr, ch] of out?.channels?.entries?.() ?? []) {
+    const peer = BigInt(addr);
+    if (peer === me) continue; // the self-channel
+    channels.push({ peer: hex(peer), channelKey: hex(BigInt(ch.key)), direction: "out" });
+  }
+  // Incoming: only the notes scan decrypts the channel infos filed under OUR
+  // address (`get_channel_info(me, i)`) — keyed by sender, present whether or
+  // not a note exists yet.
+  const { cursor, timestamp }: any = await discovery.discoverNotes(me, vk, {});
+  for (const [sender, ic] of cursor?.incomingChannels?.entries?.() ?? []) {
+    const peer = BigInt(sender);
+    if (peer === me) continue;
+    channels.push({ peer: hex(peer), channelKey: hex(BigInt(ic.channelKey)), direction: "in" });
   }
   /* eslint-enable @typescript-eslint/no-explicit-any */
   return { channels, timestamp };

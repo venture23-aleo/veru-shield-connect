@@ -1,5 +1,11 @@
 # 08 — Submission
 
+> **Status (2026-09-07): not the v1 path.** v1 ships the *public payer* shape
+> ([16-arch1-plan.md](16-arch1-plan.md)) — the payer submits from their own account, no
+> paymaster. Everything below stays correct as the route back to sender anonymity: the pool's
+> `apply_actions` is callable by any address and authorised by proof, so a relay needs no
+> contract change. Nothing in this document is wired into the code today.
+
 The previous revision devoted this section to a relayer network that had to be designed, built,
 funded, and decentralised, on the grounds that without it there was no sender anonymity.
 

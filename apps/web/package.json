@@ -8,10 +8,12 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "RUN_POOL_E2E=1 vitest run test/pool.e2e.test.ts"
   },
   "dependencies": {
     "@strk20-messaging/sdk": "workspace:*",
+    "buffer": "^6.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "starknet": "10.5.0"

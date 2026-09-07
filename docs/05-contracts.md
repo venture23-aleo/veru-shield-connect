@@ -70,9 +70,18 @@ by deploying a new helper and pointing the SDK at it.
 
 ## Pool integration
 
-**No pool modifications.** This is now a checked claim rather than an aspiration: `privacy_invoke`
-is the documented composability hook, and the pool is deployed and immutable at
-`0x040337b1…e812a` (Mainnet) / `0x0254a6b2…e0d91` (Sepolia).
+**No pool modifications** — a checked claim: nothing in this repo touches pool code, and the
+helper conforms to `privacy_invoke` compiled against the pinned pool source
+(`starknet-privacy` @ `bc75e4ba`).
+
+What is *not* yet true, stated plainly so this section stops implying it: **no transaction of
+ours has gone through a deployed pool.** The mechanics are proven on **devnet against the real
+pool contract** ([`e2e-pool.test.ts`](../apps/cli/test/e2e-pool.test.ts), mock proving); the
+Sepolia helper still carries `pool` = the deployer account (dev mode), and the live path is
+blocked on the proving endpoint ([15 § B2](15-testnet-runbook.md)) and the Phase-B redeploy
+([16 § W1](16-arch1-plan.md)). The addresses `0x040337b1…e812a` (Mainnet) /
+`0x0254a6b2…e0d91` (Sepolia) were recovered by scanning, not transacted with, and their
+immutability is assumed rather than verified.
 
 The previous revision's blocking question about historical Merkle roots does not apply — STRK20
 does not have us prove against a root. Its analogue is **anchor-block recency**: a proof is

@@ -28,8 +28,8 @@ Mainnet (`0x040337b1…e812a`) and Sepolia (`0x0254a6b2…e0d91`).
 | Shared secret per pair | `channel_key = h(CHANNEL_KEY_TAG, sender_addr, sender_sk, recipient_addr, recipient_pk)` |
 | Unlinkable addressing | `note_id = h(NOTE_ID_TAG, channel_key, token, index, 0)` — dense, sequential, WriteOnce |
 | Discovery without an index | Walk dense indices until the first empty slot; cost scales with *your* activity, not pool volume |
-| Sender anonymity at the callee | `InvokeExternal` — the pool calls the helper, so the helper's caller is the pool |
-| Submitter decoupling | A paymaster relays, so the submitting address is not the user's |
+| Caller decoupling at the helper | `InvokeExternal` — the pool calls the helper, so the helper's caller is the pool, never the payer |
+| Submitter decoupling | Available (a paymaster relays), but **v1 does not use it**: the payer submits and is public by design — see [16-arch1-plan.md](16-arch1-plan.md) |
 | Proof of membership and authorization | STARK proof over a virtual Starknet execution, verified in-protocol |
 
 **Read that table as a list of things not to build.** The tag-derivation scheme, the ECDH

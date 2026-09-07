@@ -5,7 +5,19 @@ same commit as any deployment. Explorer: prefix addresses/txs with `https://sepo
 
 ## Sepolia
 
-### MessageAnonymizer (helper)
+### MessageAnonymizer — Phase B (pool mode, **current**)
+
+| | |
+| --- | --- |
+| **Address** | `0x016f77a566ed28f2945e315f2de971b8f3e83a03b93340e8927a311277f6e0b6` |
+| Class hash | `0x0096558250259ea6ed253261f660a81e2041f98b2151dc54177cf8a854b08612` (identical to Phase A — same source, already declared) |
+| Deploy tx | `0x0425af6dad2ce028c83918ce64feee9d0351f4cd8a83325a6b934eaf19e6537e` — block 14,680,164, fee 0.049 STRK |
+| Constructor `pool` | `0x254a6b29…e0d91` — **the real STRK20 Sepolia pool**; `pool()` verified to echo it after deploy |
+| Source | `contracts/src/message_anonymizer.cairo` @ class above (unchanged since `b39b66e`) |
+| Deployed | 2026-09-07 |
+| Mode | Pool mode only. Writes come from the pool via `InvokeExternal`; nothing else can call `privacy_invoke` (`CALLER_NOT_POOL`). First live send still waits on the proving endpoint ([docs/15 § B2](docs/15-testnet-runbook.md)). |
+
+### MessageAnonymizer — Phase A (direct/dev mode, superseded)
 
 | | |
 | --- | --- |
@@ -15,7 +27,13 @@ same commit as any deployment. Explorer: prefix addresses/txs with `https://sepo
 | Constructor `pool` | `0x03ab7fda…afac4` (the deployer account — **direct/dev mode only**) |
 | Source | `contracts/src/message_anonymizer.cairo` @ commit `b39b66e` |
 | Deployed | 2026-09-04 |
-| ⚠ | Phase B (real pool mode) requires a **new deployment** with the real STRK20 pool address — the constructor pins `pool` forever. Record it below when it happens. |
+| ⚠ | Dev only: its `pool` is the deployer account, so only that account can write. Kept for `mode: "direct"` development; **not** the address pool mode uses — see Phase B above. |
+
+### Registered on the pool
+
+| Account | Tx | Note |
+| --- | --- | --- |
+| deployer `0x03ab7fda…afac4` | [`0x7c0196fc…5700e`](https://sepolia.voyager.online/tx/0x7c0196fcc4b793c9f8e797370fef1ae7b9b13d0db35d047f053d93ed4d5700e) | 2026-09-07 · `SetViewingKey`, proved by our own prover, submitted via StarkWare's gateway. Public key `0x105646f0…cbf5`. Viewing key: `~/.strk20-msg/sepolia-viewing-key` on the dev box (0600). |
 
 ### Deployer account
 
@@ -39,6 +57,7 @@ same commit as any deployment. Explorer: prefix addresses/txs with `https://sepo
 | Endpoint | Status |
 | --- | --- |
 | `https://api.cartridge.gg/x/starknet/sepolia` | **in use** (spec 0.9; sncast warns, works) |
+| `https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10` | spec 0.10.2, `starknet_getStorageProof` works — **what the transaction prover needs** |
 | `https://starknet-sepolia.drpc.org` | fallback — flaky (`getBlockWithTxHashes` intermittently missing) |
 | `*.blastapi.io` | dead — do not use |
 

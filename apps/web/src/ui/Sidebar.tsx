@@ -16,7 +16,22 @@ export function Sidebar({
   const [peer, setPeer] = useState("");
   const [inviteText, setInviteText] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
-  const invite = inviteText.trim() ? parseInvite(inviteText) : null;
+  const [discovering, setDiscovering] = useState<string | null>(null);
+  const pool = store.isPool;
+  // Pool mode: pairing IS the pool — invites are a dev-mode affordance.
+  const invite = !pool && inviteText.trim() ? parseInvite(inviteText) : null;
+
+  const discover = async () => {
+    setDiscovering("discovering…");
+    try {
+      const { updated, added } = await store.discoverLanes();
+      await store.syncNow();
+      setDiscovering(added + updated === 0 ? "nothing new" : `${added} new · ${updated} updated`);
+    } catch (e) {
+      setDiscovering(e instanceof Error ? e.message : String(e));
+    }
+    setTimeout(() => setDiscovering(null), 2500);
+  };
 
   const reset = () => {
     setAdding(false);
@@ -55,10 +70,22 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-head">
         <span>Contacts</span>
-        <button className="ghost" onClick={() => (adding ? reset() : setAdding(true))}>
-          {adding ? "cancel" : "+ add"}
-        </button>
+        <span className="row" style={{ gap: 2 }}>
+          {pool && (
+            <button className="ghost" title="Pull channel keys from the pool's scan" onClick={() => void discover()}>
+              ↻ discover
+            </button>
+          )}
+          <button className="ghost" onClick={() => (adding ? reset() : setAdding(true))}>
+            {adding ? "cancel" : "+ add"}
+          </button>
+        </span>
       </div>
+      {discovering && (
+        <p className="hint" style={{ padding: "0 14px" }}>
+          {discovering}
+        </p>
+      )}
       {adding && (
         <div className="add-contact">
           <input placeholder="Name" value={label} onChange={(e) => setLabel(e.target.value)} />
@@ -69,13 +96,15 @@ export function Sidebar({
               onChange={(e) => setPeer(e.target.value)}
             />
           )}
-          <textarea
-            rows={3}
-            placeholder="…or paste an invite from the other person (thread head → copy invite)"
-            value={inviteText}
-            onChange={(e) => setInviteText(e.target.value)}
-          />
-          {inviteText.trim() !== "" && (
+          {!pool && (
+            <textarea
+              rows={3}
+              placeholder="…or paste an invite from the other person (thread head → copy invite)"
+              value={inviteText}
+              onChange={(e) => setInviteText(e.target.value)}
+            />
+          )}
+          {!pool && inviteText.trim() !== "" && (
             <p className={invite ? "hint invite-ok" : "error"}>
               {invite
                 ? `✓ invite from ${shorten(invite.peer)} — lanes will pair with their thread`
@@ -87,8 +116,18 @@ export function Sidebar({
             {invite ? "Add paired contact" : "Add contact"}
           </button>
           <p className="hint">
-            Adding by address pairs automatically — the other person just adds <em>your</em>{" "}
-            address back. Prefer an invite when the pairing itself should stay confidential.
+            {pool ? (
+              <>
+                Pool mode pairs through the pool: they must be registered (<code>SetViewingKey</code>)
+                for you to write to them, and their replies appear once discovery finds their
+                channel to you.
+              </>
+            ) : (
+              <>
+                Adding by address pairs automatically — the other person just adds <em>your</em>{" "}
+                address back. Prefer an invite when the pairing itself should stay confidential.
+              </>
+            )}
           </p>
         </div>
       )}
@@ -102,6 +141,7 @@ export function Sidebar({
               <span className="contact-name">{c.label}</span>
               <span className="contact-addr">{shorten(c.peer)}</span>
               {!c.registered && <span className="badge warn">unregistered</span>}
+              {pool && c.registered && !c.inKey && <span className="badge info">no inbound lane yet</span>}
             </button>
           </li>
         ))}

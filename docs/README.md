@@ -5,10 +5,14 @@ contract** on the STRK20 privacy pool.
 
 ## Status
 
-**Design phase, revised.** Nothing is implemented. This revision is written against STRK20 —
+**Implemented; helper deployed on Sepolia.** The CLI, SDK, helper contract and browser client
+are built and tested; pool mode — a private payment carrying an encrypted memo — is proven on
+devnet against the real pool contract from both the CLI and the browser
+([16](16-arch1-plan.md)). The pool-mode helper is live on Sepolia ([DEPLOYMENTS.md](../DEPLOYMENTS.md));
+the first live send waits on a proving endpoint ([15 § B2](15-testnet-runbook.md)). This revision is written against STRK20 —
 Starknet's deployed privacy pool — rather than against a hypothetical pool, which removed
 roughly half of the originally planned work. Claims here are drawn from STRK20's public
-documentation, not from reading its source; items needing code-level confirmation are marked
+documentation and were then verified against source in [14-m0-decision-record.md](14-m0-decision-record.md); remaining items needing confirmation are marked
 throughout and collected in [09-open-decisions.md](09-open-decisions.md).
 
 ## Read in this order
@@ -30,6 +34,10 @@ throughout and collected in [09-open-decisions.md](09-open-decisions.md).
 | [13-milestones.md](13-milestones.md) | **Eight milestones with two shippable gates — start here to build** |
 | [14-m0-decision-record.md](14-m0-decision-record.md) | M0 spike results: D9/D12 resolved, derivations verified, SDK bundles for browser |
 | [15-testnet-runbook.md](15-testnet-runbook.md) | Sepolia checklist: direct-mode run today (Phase A), pool-mode blockers (Phase B) |
+| [16-arch1-plan.md](16-arch1-plan.md) | **Public sender, private recipient — the shape v1 ships, and the work left to finish it** |
+| [17-pool-mode-test-plan.md](17-pool-mode-test-plan.md) | Every pool-mode property to test, with what is automated, manual, missing, or blocked |
+| [19-payments-in-chat.md](19-payments-in-chat.md) | Pay, request, split/tip and receipts inside a thread — formats, settlement, what stays private |
+| [20-wallet-mode.md](20-wallet-mode.md) | Braavos / Ready through the STRK20 wallet API — no keys in the app, what it trades away |
 
 ## The one-paragraph version
 
@@ -38,7 +46,8 @@ when either first pays the other. We reuse that key to address message slots the
 pool addresses note slots: `msg_id = h(MSG_ID_TAG, channel_key, index)`, dense and sequential,
 written once. A message is sent by adding an `InvokeExternal` action to a pool transaction,
 which makes the pool call our `message_anonymizer` helper — so the helper's caller is the
-pool, not the author. A paymaster submits the transaction, so the public submitter is not the
-author either. The recipient finds messages by walking derived storage slots over plain RPC
-and decrypting locally. There is no relayer to build, no membership circuit to write, no
+pool, not the author. **The payer submits their own transaction and is publicly visible**
+([16-arch1-plan.md](16-arch1-plan.md)): what the design buys is a private *recipient* and a
+private *amount*, not an anonymous sender. The recipient finds messages by walking derived
+storage slots over plain RPC and decrypting locally. There is no relayer to build, no membership circuit to write, no
 verifier to deploy, and no indexer required.

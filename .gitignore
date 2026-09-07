@@ -5,3 +5,4 @@ dist/
 *.tsbuildinfo
 target/
 .snfoundry_cache/
+.devnet-env.local.json
