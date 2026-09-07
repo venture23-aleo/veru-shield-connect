@@ -345,7 +345,9 @@ function KeyStep({ keys, setKeys, onContinue, onBack }: { keys: { viewingKey: st
                 onClick={() => {
                   const target = wallet.chainId === MAINNET_WALLET_PRESET.chainId ? SEPOLIA_WALLET_PRESET.chainId : MAINNET_WALLET_PRESET.chainId;
                   void switchChain(wallet.w, target).then(
-                    (ok) => ok && connect(wallet.w),
+                    (ok) => {
+                      if (ok) void connect(wallet.w);
+                    },
                     (e: unknown) => setWalletError(`${wallet.w.name}: ${e instanceof Error ? e.message : String(e)}`)
                   );
                 }}
