@@ -6,20 +6,43 @@
 #
 # Prerequisites:
 #   - scarb 2.17.0, sncast 0.63.0 on PATH
-#   - a funded MAINNET sncast account (sncast account import … --network mainnet)
-#     holding at least ~5 STRK for declare + deploy
+#   - a funded MAINNET account (≥ ~5 STRK for declare + deploy), either
+#       (a) in contracts/.env — DEPLOYER_ADDRESS, DEPLOYER_PRIVATE_KEY, ACCOUNT_TYPE
+#           (template: contracts/.env.example; the script imports it into sncast
+#           as "mainnet-deployer", key passed via a 0600 temp file, never argv), or
+#       (b) already in sncast: ACCOUNT=<name> ./deploy/mainnet.sh
 #   - nothing else: POOL_ADDRESS and RPC_URL default to the verified mainnet values
-#
-# Usage:
-#   ACCOUNT=<mainnet account name> ./deploy/mainnet.sh
-#   (override RPC_URL / POOL_ADDRESS only if you know why)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-: "${ACCOUNT:?set ACCOUNT to your funded MAINNET sncast account name}"
+# --- deployer from contracts/.env, unless ACCOUNT names an existing sncast account
+if [ -z "${ACCOUNT:-}" ] && [ -f .env ]; then
+  set -a; . ./.env; set +a
+fi
 POOL_ADDRESS="${POOL_ADDRESS:-0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a}"
 RPC_URL="${RPC_URL:-https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10}"
 MAINNET_CHAIN_ID="0x534e5f4d41494e"
+
+if [ -z "${ACCOUNT:-}" ]; then
+  : "${DEPLOYER_ADDRESS:?fill DEPLOYER_ADDRESS in contracts/.env (see .env.example)}"
+  : "${DEPLOYER_PRIVATE_KEY:?fill DEPLOYER_PRIVATE_KEY in contracts/.env}"
+  ACCOUNT_TYPE="${ACCOUNT_TYPE:-ready}"
+  case "$DEPLOYER_ADDRESS" in 0x[0-9a-fA-F]*) ;; *) echo "DEPLOYER_ADDRESS must be 0x-hex"; exit 1;; esac
+  case "$DEPLOYER_PRIVATE_KEY" in 0x[0-9a-fA-F]*) ;; *) echo "DEPLOYER_PRIVATE_KEY must be 0x-hex"; exit 1;; esac
+  case "$ACCOUNT_TYPE" in ready|braavos|oz) ;; *) echo "ACCOUNT_TYPE must be ready, braavos or oz"; exit 1;; esac
+  ACCOUNT=mainnet-deployer
+  echo "== importing $DEPLOYER_ADDRESS into sncast as '$ACCOUNT' (type $ACCOUNT_TYPE)"
+  KEYFILE=$(mktemp); chmod 600 "$KEYFILE"; printf '%s' "$DEPLOYER_PRIVATE_KEY" > "$KEYFILE"
+  trap 'rm -f "$KEYFILE"' EXIT
+  IMPORT_OUT=$(sncast account import --name "$ACCOUNT" --address "$DEPLOYER_ADDRESS" --type "$ACCOUNT_TYPE"     --private-key-file "$KEYFILE" --url "$RPC_URL" --silent 2>&1) || {
+    echo "$IMPORT_OUT" | grep -qi "already exists" || { echo "$IMPORT_OUT"; exit 1; }
+    echo "(already imported — reusing)"
+  }
+  rm -f "$KEYFILE"
+  echo "== guard: the deployer must be funded"
+  BAL=$(sncast call --url "$RPC_URL" --contract-address 0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d     --function balanceOf --calldata "$DEPLOYER_ADDRESS" 2>&1 | grep -oE "0x[0-9a-fA-F]+" | head -1 || true)
+  echo "   STRK balance (raw low felt): ${BAL:-unreadable} — needs ≥ 5 STRK (5e18)"
+fi
 
 echo "== guard: the RPC must be MAINNET"
 CHAIN=$(curl -s -m 20 -X POST "$RPC_URL" -H 'Content-Type: application/json' \

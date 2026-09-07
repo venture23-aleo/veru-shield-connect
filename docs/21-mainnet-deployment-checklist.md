@@ -38,10 +38,14 @@ Fund the deployer with ≥ 5 STRK and the Ready X account with ≥ 40 STRK to be
 - [ ] **Toolchain**: `scarb 2.17.0`, `sncast 0.63.0` on PATH (`scarb --version`, `sncast --version`). Same versions the Sepolia class was built with — a different compiler gives a different class hash, which is fine but must be recorded.
 - [ ] **Build clean**: `cd contracts && scarb build && scarb test` — all green.
 - [ ] **Source frozen**: `git status` clean in `contracts/`; note the commit hash. The Sepolia helper is at commit `b39b66e`; deploy the same source unless a change was intended.
-- [ ] **Mainnet deployer account**, one of:
-  - export the private key of a funded Ready X account (Settings → Export private key) and `sncast account import --name mainnet-deployer --address <addr> --private-key <key> --type argent --network mainnet` (Ready accounts are `argent` type; check `sncast account import --help` for the exact type flag in 0.63), or
-  - create a fresh OpenZeppelin account: `sncast account create --name mainnet-deployer --network mainnet`, fund the printed address with ≥ 5 STRK, then `sncast account deploy --name mainnet-deployer --network mainnet`.
-  - **Never** reuse the Sepolia deployer key on mainnet.
+- [ ] **Mainnet deployer account** — `contracts/.env` (template `contracts/.env.example`, git-ignored, `chmod 600`):
+  ```
+  DEPLOYER_ADDRESS=0x…        # a funded mainnet account
+  DEPLOYER_PRIVATE_KEY=0x…    # Ready X: Settings → account → Export private key
+  ACCOUNT_TYPE=ready          # ready | braavos | oz  (sncast 0.63 names)
+  ```
+  The script imports it into sncast as `mainnet-deployer` (key handed over through a 0600 temp file, never on the command line) and checks the STRK balance. Alternatively `ACCOUNT=<existing sncast name>` skips `.env`.
+  - **Never** reuse the Sepolia deployer key on mainnet; delete the key from `.env` after the deploy if the box is shared.
 - [ ] **Balance check**: `sncast call --url <RPC> --contract-address 0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d --function balanceOf --calldata <deployer>` ≥ 5 STRK.
 - [ ] **RPC is mainnet**: the script checks `starknet_chainId == SN_MAIN` and refuses otherwise.
 - [ ] **Pool is the real one**: the script calls `get_fee_amount` on it and refuses otherwise. Do not override `POOL_ADDRESS`.

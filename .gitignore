@@ -15,3 +15,8 @@ target/
 **/.agents/
 apps/web/stitch/
 apps/web/design-system/
+
+# deployer secrets (contracts/.env.example is the template)
+contracts/.env
+.env
+!*.env.example
