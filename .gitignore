@@ -10,3 +10,9 @@ target/
 .netlify
 .claude
 .cursor
+.agents/
+**/.agents/
+
+apps/web/stitch/
+apps/web/design-system/
+
