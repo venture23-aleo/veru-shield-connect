@@ -1,7 +1,8 @@
 {
   "name": "@strk20-messaging/cli",
   "version": "0.1.0",
-  "description": "msg — send and read encrypted messages over the STRK20 privacy pool",
+  "license": "MIT",
+  "description": "msg \u2014 send and read encrypted messages over the STRK20 privacy pool",
   "type": "module",
   "bin": {
     "msg": "./dist/index.js"

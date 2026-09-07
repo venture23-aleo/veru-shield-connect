@@ -1,4 +1,29 @@
 /**
+ * Wallet mode against mainnet: the live STRK20 pool (hackathon Day 0 guide),
+ * Cartridge's mainnet RPC (spec 0.10.2, the one starknet.js 10.5 accepts; the
+ * guide's lava endpoint is discontinued), and the MessageAnonymizer deployed
+ * 2026-09-07 with `pool` = this pool (DEPLOYMENTS.md § Mainnet).
+ */
+export const MAINNET_WALLET_PRESET = {
+  label: "Mainnet · wallet mode (STRK20 pool)",
+  rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
+  helperAddress: "0x030a2a39c47adba579c8fd07e7d9adbf5fe8f36b97da0b6ead884cae3a8bb3a6",
+  poolAddress: "0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a",
+  carrierToken: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+  chainId: "0x534e5f4d41494e",
+};
+
+/** Wallet mode against Sepolia: the pool-mode helper and the Sepolia pool, over the v0_10 RPC. */
+export const SEPOLIA_WALLET_PRESET = {
+  label: "Sepolia · wallet mode (STRK20 pool)",
+  rpcUrl: "https://api.cartridge.gg/x/starknet/sepolia/rpc/v0_10",
+  helperAddress: "0x016f77a566ed28f2945e315f2de971b8f3e83a03b93340e8927a311277f6e0b6",
+  poolAddress: "0x254a6b2997ef52e9f830ce1f543f6b29768295e8d17e2267d672c552cfe0d91",
+  carrierToken: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+  chainId: "0x534e5f5345504f4c4941",
+};
+
+/**
  * Connection presets and the pre-save probe. Preset values mirror
  * DEPLOYMENTS.md — update both in the same commit as any redeployment.
  */
@@ -11,12 +36,67 @@ export interface ConnectionPreset {
   accountAddress: string;
 }
 
+// DIRECT mode needs the helper whose `pool` is YOUR account — that is the
+// Phase-A helper below. The pool-mode helper (Phase B, pool = the real STRK20
+// pool, 0x016f77a5…f6e0b6) would reject a direct write with CALLER_NOT_POOL;
+// it becomes relevant only when this app grows a `pool` backend (16 § W8).
 export const SEPOLIA_PRESET: ConnectionPreset = {
   label: "Sepolia · project deployment",
   rpcUrl: "https://api.cartridge.gg/x/starknet/sepolia",
   helperAddress: "0x06409a4a8c1962bbfd6b04ea9ab1f745be8e7bceddc61f4e322dcbc7781ae032",
   accountAddress: "0x03ab7fda95f39c9b5be0572bd2a115db1bff1db87c88fbcff872473f1f2afac4",
 };
+
+/** Pool mode against Sepolia — the Phase-B helper, pinned to the real STRK20 pool. */
+export interface PoolPreset {
+  label: string;
+  rpcUrl: string;
+  helperAddress: string;
+  poolAddress: string;
+  carrierToken: string;
+}
+
+export const SEPOLIA_POOL_PRESET: PoolPreset = {
+  label: "Sepolia · pool mode (needs a proving URL)",
+  rpcUrl: "https://api.cartridge.gg/x/starknet/sepolia",
+  helperAddress: "0x016f77a566ed28f2945e315f2de971b8f3e83a03b93340e8927a311277f6e0b6",
+  poolAddress: "0x254a6b2997ef52e9f830ce1f543f6b29768295e8d17e2267d672c552cfe0d91",
+  carrierToken: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+};
+
+/**
+ * The block `scripts/pool-devnet.mjs` prints: one paste fills every pool-mode
+ * field for a local, mock-proved run against the real pool contract.
+ */
+export interface DevnetEnv {
+  "strk20msg-devnet": 1;
+  rpcUrl: string;
+  helperAddress: string;
+  poolAddress: string;
+  carrierToken: string;
+  accounts: { name: string; address: string; privateKey: string; viewingKey: string }[];
+}
+
+export function parseDevnetEnv(text: string): DevnetEnv | null {
+  try {
+    const raw = JSON.parse(text) as Partial<DevnetEnv>;
+    if (
+      raw["strk20msg-devnet"] === 1 &&
+      typeof raw.rpcUrl === "string" &&
+      isHex(raw.helperAddress ?? "") &&
+      isHex(raw.poolAddress ?? "") &&
+      isHex(raw.carrierToken ?? "") &&
+      Array.isArray(raw.accounts) &&
+      raw.accounts.length > 0 &&
+      raw.accounts.every((a) => isHex(a.address) && isHex(a.privateKey) && isHex(a.viewingKey) && !!a.name)
+    ) {
+      return raw as DevnetEnv;
+    }
+  } catch {
+    /* not a devnet block */
+  }
+  return null;
+}
 
 export const isHex = (v: string): boolean => /^0x[0-9a-fA-F]+$/.test(v.trim());
 
@@ -192,4 +272,59 @@ export async function probeConnection(
     }
   }
   return { ok: true, detail: "helper found · pool() matches your account · ready to send" };
+}
+
+/**
+ * Does this private key control this account? OpenZeppelin/Argent/Braavos
+ * accounts expose their signer's public key; compare with getStarkKey(key).
+ * The pool rejects a proven transaction signed by the wrong key with a bare
+ * INVALID_SIGNATURE, deep in the failure bar — better to refuse at Save.
+ */
+export async function probeSigner(
+  rpcUrl: string,
+  accountAddress: string,
+  privateKey: string
+): Promise<{ ok: boolean; detail: string }> {
+  if (!isHex(accountAddress) || !isHex(privateKey)) return { ok: false, detail: "address and key must be 0x-hex" };
+  const { RpcProvider, ec } = await import("starknet");
+  let mine: bigint;
+  try {
+    mine = BigInt(ec.starkCurve.getStarkKey(privateKey.trim()));
+  } catch {
+    return { ok: false, detail: "that private key is not a valid STARK-curve scalar" };
+  }
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
+  for (const entrypoint of ["get_public_key", "getPublicKey", "get_owner"]) {
+    try {
+      const res = await provider.callContract({ contractAddress: accountAddress, entrypoint, calldata: [] });
+      const onChain = BigInt(res[0] ?? "0x0");
+      if (onChain === mine) return { ok: true, detail: "the key controls this account" };
+      return {
+        ok: false,
+        detail: `this key does NOT control ${accountAddress.slice(0, 10)}… (its signer is 0x${onChain.toString(16).slice(0, 10)}…) — the pool would reject every send with INVALID_SIGNATURE`,
+      };
+    } catch {
+      /* try the next accessor */
+    }
+  }
+  return { ok: false, detail: "could not read the account's signer key (unknown account class) — proceed with care" };
+}
+
+const STRK = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+
+/** STRK balance, allowance to the pool, and the pool's fee — what a send costs against what you have. */
+export async function probeBalance(
+  rpcUrl: string,
+  accountAddress: string,
+  poolAddress: string
+): Promise<{ strk: number; allowance: number; fee: number }> {
+  const { RpcProvider } = await import("starknet");
+  const provider = new RpcProvider({ nodeUrl: rpcUrl });
+  const u256 = (r: string[]) => Number((BigInt(r[0] ?? "0x0") + (BigInt(r[1] ?? "0x0") << 128n)) / 10n ** 15n) / 1000;
+  const [bal, allow, fee] = await Promise.all([
+    provider.callContract({ contractAddress: STRK, entrypoint: "balanceOf", calldata: [accountAddress] }),
+    provider.callContract({ contractAddress: STRK, entrypoint: "allowance", calldata: [accountAddress, poolAddress] }),
+    provider.callContract({ contractAddress: poolAddress, entrypoint: "get_fee_amount", calldata: [] }),
+  ]);
+  return { strk: u256(bal), allowance: u256(allow), fee: Number(BigInt(fee[0] ?? "0x0") / 10n ** 15n) / 1000 };
 }

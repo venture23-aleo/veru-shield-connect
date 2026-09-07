@@ -10,6 +10,9 @@
     "web:build": "pnpm --filter @strk20-messaging/web build",
     "web:preview": "pnpm --filter @strk20-messaging/web preview",
     "cli": "node apps/cli/dist/index.js",
-    "vectors": "node vectors/generate.mjs"
-  }
+    "vectors": "node vectors/generate.mjs",
+    "web:devnet": "node scripts/pool-devnet.mjs",
+    "sdk:patch": "node scripts/patch-privacy-sdk.mjs"
+  },
+  "license": "MIT"
 }

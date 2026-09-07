@@ -1,0 +1,13 @@
+{
+  "transactions": [
+    "0x7aafcbc2f4d7b3a9e159a1e733d45cbba9d9fb4c516b6dc7ea9b4ec060ef803",
+    "0x193b781e04a31c209406bf96d628c26a051c66749361bc8f14a05c427677b9d",
+    "0x25fea6bdf5f39961480b8a891bd208979e662f3ca2e4562f85cdb8de32eaaf3"
+  ],
+  "contracts": [
+    "0x030a2a39c47adba579c8fd07e7d9adbf5fe8f36b97da0b6ead884cae3a8bb3a6"
+  ],
+  "demo_video": "https://drive.google.com/file/d/1aIYWjgSC00wcbzLh8tf0SOlEym6IrtE6/view?usp=sharing",
+  "demo_url": "https://verushieldconnect.netlify.app/",
+  "payout_address": "0xefb5716585548ab719d7cb7abbe327aa28803dc932debf16212a8e5996ee88"
+}

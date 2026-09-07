@@ -1,7 +1,8 @@
 {
   "name": "@strk20-messaging/sdk",
   "version": "0.1.0",
-  "description": "Messaging extension over the STRK20 Privacy SDK — derivations, AEAD, felt packing, framing",
+  "license": "MIT",
+  "description": "Messaging extension over the STRK20 Privacy SDK \u2014 derivations, AEAD, felt packing, framing",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

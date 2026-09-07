@@ -7,7 +7,7 @@
  * shared-secret MAC. Joining via invite reveals the FULL history: lanes are
  * walkable from index 0 and storage is permanent.
  */
-import { groupLaneKey, type HistoryRecord } from "@strk20-messaging/sdk";
+import { decodePaymentMemo, groupLaneKey, type HistoryRecord } from "@strk20-messaging/sdk";
 
 export interface GroupMember {
   address: string;
@@ -75,6 +75,13 @@ export interface GroupThreadMessage {
   timestamp: number;
   index: number;
   channelKey: string;
+  /**
+   * A split or tip: the writer paid `amount` of `token` to each member named
+   * in the memo — the transfers rode the same transaction as this memo, one
+   * private note per recipient. Everyone in the group reads the memo (shared
+   * key); only the pool knows nothing.
+   */
+  payment?: { token: string; amount: string };
 }
 
 export function stitchGroupThread(
@@ -89,14 +96,17 @@ export function stitchGroupThread(
     .map((r) => {
       const member = byLane.get(r.channelKey.toLowerCase())!;
       const mine = sameAddr(member.address, myAddress);
+      const bytes = Uint8Array.from(atob(r.bodyBase64), (c) => c.charCodeAt(0));
+      const payment = decodePaymentMemo(bytes);
       return {
         direction: mine ? ("sent" as const) : ("received" as const),
         senderAddress: member.address,
         senderLabel: mine ? "you" : (member.label ?? shortAddr(member.address)),
-        body: decode(r.bodyBase64),
+        body: payment ? payment.text : decode(bytes),
         timestamp: r.timestamp,
         index: r.index,
         channelKey: r.channelKey,
+        ...(payment ? { payment: { token: "0x" + payment.token.toString(16), amount: payment.amount.toString() } } : {}),
       };
     })
     .sort(
@@ -119,7 +129,12 @@ function shortAddr(addr: string): string {
   return addr.length > 12 ? `${addr.slice(0, 7)}…${addr.slice(-4)}` : addr;
 }
 
-function decode(b64: string): string {
-  const bin = atob(b64);
-  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+function decode(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes);
+}
+
+/** Label for a member, as the group knows them. */
+export function memberLabel(group: Group, address: string): string {
+  const m = group.members.find((x) => sameAddr(x.address, address));
+  return m?.label ?? shortAddr(address);
 }

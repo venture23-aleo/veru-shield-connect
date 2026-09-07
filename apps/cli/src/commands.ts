@@ -1,4 +1,5 @@
 import {
+  encodePaymentMemo,
   privacyInvokeCalldata,
   seal,
   tierOf,
@@ -7,10 +8,12 @@ import {
   type Sealed,
 } from "@strk20-messaging/sdk";
 import { Account, RpcProvider } from "starknet";
+import { discoverChannelsFromPool } from "./channels.js";
 import {
   loadConfig,
   loadCursors,
   privateKey,
+  saveConfig,
   saveCursors,
   type ChannelConfig,
   type CliConfig,
@@ -98,8 +101,9 @@ export async function sendMessage(
     const res = await poolSend(cfg, account, provider, [sealed], {
       onProving: () => log("proving… (~29 s)"),
       onSubmitted: (h) => log(`submitted ${h}`),
-    });
+    }, { setupPeer: channel.peer });
     txHash = res.txHash;
+    markSetupDone(cfg, channel);
   }
   log(`confirmed ${txHash}`);
 
@@ -245,13 +249,16 @@ export async function flushOutbox(
               events
             );
           }
+          // Pool mode, first contact with this peer: open the channel in the
+          // same transaction, or they can never discover the lane.
+          const lane = cfg.channels.find((c) => c.channelKey === channelKeyHex);
           return poolSend(
             cfg,
             account,
             provider,
             batch.map((i) => i.sealed),
             { ...events, onProving: () => log("proving… (~29 s)") },
-            { provingBlockId }
+            { provingBlockId, setupPeer: lane?.peer }
           );
         },
       });
@@ -263,6 +270,8 @@ export async function flushOutbox(
         { txHash: outcome.txHash, indices: new Map(outcome.sent.map((i) => [i.entry.id, i.index])) }
       );
       cursors[channelKeyHex] = maxIndex + 1;
+      const openedLane = cfg.channels.find((c) => c.channelKey === channelKeyHex);
+      if (openedLane) markSetupDone(cfg, openedLane);
       saveCursors(cursors);
       report.transactions.push({ txHash: outcome.txHash, count: outcome.sent.length, channel: label });
       report.flushed += outcome.sent.length;
@@ -300,7 +309,10 @@ export async function pay(
     index,
     sender: BigInt(cfg.account.address),
     timestamp: BigInt(Math.floor(Date.now() / 1000)),
-    body: new TextEncoder().encode(memoText),
+    // The value details ride inside the ciphertext: the recipient cannot
+    // pair a memo with a note from chain state (encrypted amount, recipient in
+    // the proof), so the sender — who knows both — writes the pairing in.
+    body: encodePaymentMemo(BigInt(token), amount, memoText),
   });
   log(`memo · ${channel.label} · index ${index} · transfer ${amount} of ${token.slice(0, 10)}…`);
 
@@ -367,11 +379,76 @@ function syncEngine(cfg: CliConfig): SyncEngine {
  * index 0 — with a fresh config dir this rebuilds everything the viewing key's
  * channels ever received, from chain state alone.
  */
+/**
+ * Merge the pool's channel scan into the config. This is how an INCOMING
+ * channel becomes readable at all: only the sender can derive the key, so
+ * until the scan decrypts it for us the messages already in helper storage are
+ * addressed to slots we cannot compute (M0 § S4).
+ *
+ * Hand-added channels are left alone — a discovered key never silently
+ * overwrites one the user configured.
+ */
+export async function discoverChannels(
+  opts: { log?: (line: string) => void } = {}
+): Promise<{ added: number; known: number }> {
+  const log = opts.log ?? (() => {});
+  const cfg = loadConfig();
+  if (cfg.mode !== "pool") {
+    throw new Error("channel discovery needs mode 'pool' — direct mode has no channel scan");
+  }
+  const { channels } = await discoverChannelsFromPool(cfg);
+  let added = 0;
+  for (const found of channels) {
+    const existing = cfg.channels.find(
+      (c) => c.channelKey.toLowerCase() === found.channelKey.toLowerCase()
+    );
+    if (existing) {
+      existing.direction ??= found.direction;
+      continue;
+    }
+    const label = labelForPeer(cfg, found.peer);
+    cfg.channels.push({
+      label,
+      peer: found.peer,
+      channelKey: found.channelKey,
+      direction: found.direction,
+      discovered: true,
+    });
+    added++;
+    log(`  + ${label} · ${found.direction === "in" ? "incoming" : "outgoing"} · ${found.peer.slice(0, 12)}…`);
+  }
+  if (added > 0) saveConfig(cfg);
+  return { added, known: cfg.channels.length };
+}
+
+/** A stable, human-usable label for a peer we have never seen named. */
+function labelForPeer(cfg: CliConfig, peer: string): string {
+  const named = cfg.channels.find((c) => c.peer.toLowerCase() === peer.toLowerCase());
+  if (named) return named.label;
+  const short = `${peer.slice(0, 6)}…${peer.slice(-4)}`;
+  let label = short;
+  for (let n = 2; cfg.channels.some((c) => c.label === label); n++) label = `${short}#${n}`;
+  return label;
+}
+
 export async function syncNow(
   opts: { full?: boolean; log?: (line: string) => void } = {}
 ): Promise<{ syncedToBlock: number; found: number; totalMessages: number }> {
   const log = opts.log ?? (() => {});
-  const cfg = loadConfig();
+  let cfg = loadConfig();
+  if (cfg.mode === "pool" && cfg.pool?.discoveryUrl) {
+    // Best effort: a discovery outage must not stop us re-scanning the
+    // channels we already know.
+    try {
+      const { added } = await discoverChannels({ log });
+      if (added > 0) {
+        log(`discovered ${added} new channel(s)`);
+        cfg = loadConfig();
+      }
+    } catch (err) {
+      log(`channel discovery skipped: ${(err as Error).message}`);
+    }
+  }
   const engine = syncEngine(cfg);
   const result = await engine.sync(
     cfg.channels.map((c) => c.channelKey),
@@ -396,6 +473,13 @@ export function fullHistory(channelLabel?: string): HistoryRecord[] {
   const cfg = loadConfig();
   const key = channelLabel ? resolveChannel(cfg, channelLabel).channelKey : undefined;
   return syncEngine(cfg).history(key);
+}
+
+/** Pool mode: remember that our channel to this peer is open, so later sends skip `setup`. */
+function markSetupDone(cfg: CliConfig, channel: ChannelConfig): void {
+  if (cfg.mode !== "pool" || channel.setupDone) return;
+  channel.setupDone = true;
+  saveConfig(cfg);
 }
 
 function labelFor(cfg: CliConfig, channelKey: string): string {

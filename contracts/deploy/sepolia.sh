@@ -25,7 +25,7 @@ DECLARE_OUT=$(sncast --account "$ACCOUNT" declare \
   echo "$DECLARE_OUT" | grep -qi "already declared" || { echo "$DECLARE_OUT"; exit 1; }
   echo "$DECLARE_OUT"
 }
-CLASS_HASH=$(echo "$DECLARE_OUT" | grep -oE "class_hash: +0x[0-9a-fA-F]+" | grep -oE "0x[0-9a-fA-F]+" | head -1)
+CLASS_HASH=$(echo "$DECLARE_OUT" | grep -oiE "class[ _]hash: +0x[0-9a-fA-F]+" | grep -oE "0x[0-9a-fA-F]+" | head -1 || true)
 [ -n "$CLASS_HASH" ] || CLASS_HASH=$(echo "$DECLARE_OUT" | grep -oE "0x[0-9a-fA-F]{50,}" | head -1)
 echo "class_hash: $CLASS_HASH"
 
@@ -34,7 +34,8 @@ DEPLOY_OUT=$(sncast --account "$ACCOUNT" deploy \
   --url "$RPC_URL" --class-hash "$CLASS_HASH" \
   --constructor-calldata "$POOL_ADDRESS")
 echo "$DEPLOY_OUT"
-CONTRACT_ADDRESS=$(echo "$DEPLOY_OUT" | grep -oE "contract_address: +0x[0-9a-fA-F]+" | grep -oE "0x[0-9a-fA-F]+")
+CONTRACT_ADDRESS=$(echo "$DEPLOY_OUT" | grep -oiE "contract[ _]address: +0x[0-9a-fA-F]+" | grep -oE "0x[0-9a-fA-F]+" | head -1 || true)
+[ -n "$CONTRACT_ADDRESS" ] || { echo "could not parse contract address from:"; echo "$DEPLOY_OUT"; exit 1; }
 
 echo "== sanity: pool() must echo the constructor arg"
 sncast call --url "$RPC_URL" \
@@ -48,4 +49,4 @@ sncast --account "$ACCOUNT" verify \
 
 echo
 echo "MessageAnonymizer deployed at: $CONTRACT_ADDRESS"
-echo "Record it in docs/15-m2-deployment.md"
+echo "Record it in DEPLOYMENTS.md (same commit)"
