@@ -2,7 +2,7 @@
 
 > End-to-end encrypted messaging where the blockchain is the mailbox — no servers, no metadata, permanent.
 
-**Team**: Venture23 Inc.
+**Team**: Venture23 Inc. · **License**: MIT ([LICENSE](LICENSE))
 
 ## How it works
 

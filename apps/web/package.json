@@ -1,6 +1,7 @@
 {
   "name": "@strk20-messaging/web",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Browser client for STRK20 encrypted messaging",
   "private": true,
   "type": "module",

@@ -13,5 +13,6 @@
     "vectors": "node vectors/generate.mjs",
     "web:devnet": "node scripts/pool-devnet.mjs",
     "sdk:patch": "node scripts/patch-privacy-sdk.mjs"
-  }
+  },
+  "license": "MIT"
 }
