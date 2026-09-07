@@ -35,5 +35,5 @@ Cairo contract (WriteOnce storage) · TypeScript SDK (ChaCha20-Poly1305 + Poseid
 ## Run it
 
 ```bash
-pnpm install && pnpm -r build && pnpm run web   # demo mode — zero setup
+pnpm install && pnpm -r build && pnpm run dev   # demo mode — zero setup
 ```

@@ -5,3 +5,8 @@ dist/
 *.tsbuildinfo
 target/
 .snfoundry_cache/
+
+# Local Netlify folder
+.netlify
+.claude
+.cursor

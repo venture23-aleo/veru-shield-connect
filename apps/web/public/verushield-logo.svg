@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <rect width="120" height="120" rx="28" fill="#111418"/>
+  <rect x="1" y="1" width="118" height="118" rx="27" stroke="#262b33" stroke-width="2"/>
+  <!-- VeruShield outer security shield with interlocking geometric nodes -->
+  <path d="M60 22L88 36V60C88 78 75.5 94 60 99C44.5 94 32 78 32 60V36L60 22Z" fill="#161a20" stroke="#00E5A3" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Veru "V" interlocking connector representing dual-commitment / privacy pool verification -->
+  <path d="M46 48L60 74L74 48" stroke="#00E5A3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="60" cy="42" r="3.5" fill="#00E5A3"/>
+</svg>

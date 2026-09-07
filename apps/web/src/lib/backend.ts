@@ -13,7 +13,11 @@ export type SubmitState = "proving" | "submitted";
 
 export interface Backend {
   reader: SlotReader;
-  submitBatch(sealed: Sealed[], onState: (s: SubmitState) => void): Promise<{ txHash: string }>;
+  submitBatch(
+    sealed: Sealed[],
+    onState: (s: SubmitState) => void,
+    signal?: AbortSignal
+  ): Promise<{ txHash: string }>;
   isRegistered(address: string): Promise<boolean>;
   register(address: string): Promise<void>;
   /** Demo affordances are absent on real backends. */
@@ -72,11 +76,17 @@ export class DemoBackend implements Backend {
     blockNumber: async () => this.load().block,
   };
 
-  async submitBatch(sealed: Sealed[], onState: (s: SubmitState) => void): Promise<{ txHash: string }> {
+  async submitBatch(
+    sealed: Sealed[],
+    onState: (s: SubmitState) => void,
+    signal?: AbortSignal
+  ): Promise<{ txHash: string }> {
     onState("proving");
-    await delay(this.provingSeconds * 1000);
+    await delayCancellable(this.provingSeconds * 1000, signal);
+    if (signal?.aborted) throw new DOMException("Flush cancelled", "AbortError");
     onState("submitted");
-    await delay(1200);
+    await delayCancellable(1200, signal);
+    if (signal?.aborted) throw new DOMException("Flush cancelled", "AbortError");
     const chain = this.load();
     for (const s of sealed) {
       const key = "0x" + s.msgId.toString(16);
@@ -170,9 +180,16 @@ export class DirectBackend implements Backend {
     blockNumber: async () => (await this.providerP).provider.getBlockNumber(),
   };
 
-  async submitBatch(sealed: Sealed[], onState: (s: SubmitState) => void): Promise<{ txHash: string }> {
+  async submitBatch(
+    sealed: Sealed[],
+    onState: (s: SubmitState) => void,
+    signal?: AbortSignal
+  ): Promise<{ txHash: string }> {
+    if (signal?.aborted) throw new DOMException("Flush cancelled", "AbortError");
+    // Direct mode has no long local proving wait — cancel is only meaningful before execute.
     const { privacyInvokeCalldata } = await import("@strk20-messaging/sdk");
     const { provider, account } = await this.providerP;
+    if (signal?.aborted) throw new DOMException("Flush cancelled", "AbortError");
     const tx = await account.execute(
       [
         {
@@ -200,4 +217,25 @@ export class DirectBackend implements Backend {
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function delayCancellable(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Flush cancelled", "AbortError"));
+      return;
+    }
+    const step = 200;
+    let waited = 0;
+    const tick = () => {
+      if (signal?.aborted) {
+        reject(new DOMException("Flush cancelled", "AbortError"));
+        return;
+      }
+      waited += step;
+      if (waited >= ms) resolve();
+      else setTimeout(tick, step);
+    };
+    setTimeout(tick, Math.min(step, ms));
+  });
 }

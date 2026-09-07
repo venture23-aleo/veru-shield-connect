@@ -1,3 +1,4 @@
+import { ArrowsClockwise, Copy, Gear } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { store } from "../lib/store.js";
 import { shorten } from "./Onboarding.js";
@@ -15,7 +16,8 @@ function IdentityChip() {
   const [copied, setCopied] = useState(false);
   return (
     <button
-      className="id-chip"
+      type="button"
+      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors duration-200 hover:border-primary/50 hover:text-foreground"
       title={`your messaging identity — click to copy:\n${store.identity}${
         store.config?.identityAddress ? `\nsigner: ${store.config.accountAddress}` : "\n(also the signer)"
       }`}
@@ -25,9 +27,15 @@ function IdentityChip() {
         setTimeout(() => setCopied(false), 1500);
       }}
     >
-      {copied ? "address copied ✓" : (
+      {copied ? (
         <>
-          you: <code>{shorten(store.identity)}</code> ⧉
+          <Copy size={14} weight="regular" aria-hidden="true" />
+          address copied
+        </>
+      ) : (
+        <>
+          you: <code className="text-foreground">{shorten(store.identity)}</code>
+          <Copy size={14} weight="regular" aria-hidden="true" />
         </>
       )}
     </button>
@@ -52,22 +60,54 @@ export function Chrome({ onSettings }: { onSettings: () => void }) {
     status?.updatedAt != null ? Math.max(0, Math.round((Date.now() - status.updatedAt) / 1000)) : null;
 
   return (
-    <header className="chrome">
-      <div className="brand">STRK20 Messages</div>
+    <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-2.5">
+      <div className="mr-auto flex items-center gap-2.5">
+        <img
+          src="/verushield-logo.svg"
+          alt=""
+          width={28}
+          height={28}
+          className="h-7 w-7 rounded-md object-cover"
+          draggable={false}
+        />
+        <div className="leading-tight">
+          <div className="font-heading text-sm font-semibold tracking-tight text-foreground">
+            VeruShield Connect
+          </div>
+          <div className="text-[11px] text-muted-foreground">encrypted on Starknet</div>
+        </div>
+      </div>
       <IdentityChip />
       <button
-        className={`sync ${store.syncing ? "busy" : ""}`}
+        type="button"
+        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors duration-200 ${
+          store.syncing
+            ? "border-primary text-primary"
+            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+        }`}
         onClick={() => void store.syncNow()}
         title="Click to sync now"
       >
+        <ArrowsClockwise
+          size={14}
+          weight="regular"
+          className={store.syncing ? "animate-spin" : ""}
+          aria-hidden="true"
+        />
         {store.syncing
-          ? "syncing…"
+          ? "Checking for new messages…"
           : status?.syncedToBlock != null
             ? `synced to block ${status.syncedToBlock.toLocaleString()} · ${age}s ago`
             : "not synced yet"}
       </button>
-      <button className="ghost" onClick={onSettings}>
-        Settings
+      <button
+        type="button"
+        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground"
+        onClick={onSettings}
+        aria-label="Settings"
+      >
+        <Gear size={18} weight="regular" aria-hidden="true" />
+        <span className="hidden sm:inline">Settings</span>
       </button>
     </header>
   );

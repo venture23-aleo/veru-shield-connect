@@ -24,6 +24,16 @@ export interface AppConfig {
   accountAddress: string;
   /** Honest by default; adjustable in settings for demos. */
   provingSeconds: number;
+  /**
+   * Hosted proving sees the signed invocation before the proof wraps it.
+   * Self-hosted keeps that witness on-device; timing varies with hardware.
+   */
+  provingMode: "hosted" | "self";
+  /**
+   * Paymaster relay: submitting address is not yours.
+   * Direct: faster / no third party, but your address is the on-chain submitter.
+   */
+  submissionMode: "paymaster" | "direct";
   rpcUrl?: string;
   helperAddress?: string;
   accountKey?: string;
@@ -37,7 +47,7 @@ export interface AppConfig {
 }
 
 export interface FlushProgress {
-  phase: "idle" | "proving" | "submitted" | "confirmed" | "failed";
+  phase: "idle" | "encrypting" | "proving" | "submitted" | "confirmed" | "failed";
   startedAt?: number;
   secondsTotal?: number;
   txHash?: string;
@@ -96,9 +106,10 @@ export class AppStore {
 
   backend: Backend | null = null;
   engine: SyncEngine | null = null;
+  private flushAbort: AbortController | null = null;
 
   constructor() {
-    this.config = readJson<AppConfig>(CONFIG_KEY);
+    this.config = normalizeConfig(readJson<AppConfig>(CONFIG_KEY));
     this.contacts = readJson<Contact[]>(CONTACTS_KEY) ?? [];
     this.groups = readJson<Group[]>(GROUPS_KEY) ?? [];
     this.outbox = new Outbox(new LsOutboxStore());
@@ -141,6 +152,33 @@ export class AppStore {
     this.config = { ...this.config!, ...patch };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(this.config));
     this.connect();
+    this.notify();
+  }
+
+  /**
+   * Wipe this browser’s session (keys, contacts, outbox, sync, demo chain) and
+   * return to onboarding. On-chain messages stay; without a backup you cannot
+   * decrypt them here again.
+   */
+  disconnect(): void {
+    for (const key of [
+      CONFIG_KEY,
+      CONTACTS_KEY,
+      GROUPS_KEY,
+      OUTBOX_KEY,
+      SYNC_KEY,
+      "strk20msg.demo.chain",
+    ]) {
+      localStorage.removeItem(key);
+    }
+    this.config = null;
+    this.contacts = [];
+    this.groups = [];
+    this.outbox = new Outbox(new LsOutboxStore());
+    this.flush = { phase: "idle" };
+    this.syncing = false;
+    this.backend = null;
+    this.engine = null;
     this.notify();
   }
 
@@ -244,8 +282,11 @@ export class AppStore {
   /** Flush every queued message: one transaction per contact lane. */
   async sendBatch(): Promise<void> {
     const queued = this.outbox.take();
-    if (queued.length === 0 || this.flush.phase === "proving") return;
+    if (queued.length === 0 || this.flush.phase === "proving" || this.flush.phase === "encrypting")
+      return;
     const cfg = this.config!;
+    this.flushAbort = new AbortController();
+    const signal = this.flushAbort.signal;
 
     try {
       const byLane = new Map<string, { display: string; entries: OutboxEntry[] }>();
@@ -272,6 +313,10 @@ export class AppStore {
           index += 16;
         }
 
+        const ids = entries.map((e) => e.id);
+        this.flush = { phase: "encrypting", startedAt: Date.now(), secondsTotal: cfg.provingSeconds };
+        this.notify();
+
         const items: { entry: OutboxEntry; sealed: Sealed; index: number }[] = entries.map(
           (entry, k) => ({
             entry,
@@ -285,7 +330,13 @@ export class AppStore {
             }),
           })
         );
-        const ids = items.map((i) => i.entry.id);
+
+        if (signal.aborted) {
+          this.outbox.mark(ids, "queued");
+          this.flush = { phase: "idle" };
+          this.notify();
+          return;
+        }
 
         this.flush = {
           phase: "proving",
@@ -301,7 +352,8 @@ export class AppStore {
             this.flush = { ...this.flush, phase: state };
             this.outbox.mark(ids, state);
             this.notify();
-          }
+          },
+          signal
         );
 
         this.outbox.mark(ids, "confirmed", {
@@ -312,19 +364,38 @@ export class AppStore {
         this.notify();
 
         await this.syncNow();
-        // Demo counterparty replies only in one-to-one threads.
         const contact = this.contacts.find((c) => c.label === display);
         if (contact) this.backend!.demo?.scheduleReply(contact, () => void this.syncNow());
       }
     } catch (err) {
-      // A failed batch goes BACK to queued — retryable, never stuck in
-      // "proving"/"submitted" limbo. (WriteOnce slots make an accidental
-      // double-send self-defeating anyway: a re-flush re-walks the indices.)
+      const cancelled = err instanceof DOMException && err.name === "AbortError";
       const stuck = [...this.outbox.list("proving"), ...this.outbox.list("submitted")].map((e) => e.id);
       if (stuck.length) this.outbox.mark(stuck, "queued");
-      this.flush = { phase: "failed", error: err instanceof Error ? err.message : String(err) };
+      this.flush = cancelled
+        ? { phase: "idle" }
+        : { phase: "failed", error: err instanceof Error ? err.message : String(err) };
       this.notify();
+    } finally {
+      this.flushAbort = null;
     }
+  }
+
+  /**
+   * Cancel only while encrypting/proving (before chain submission). After
+   * submit, the UI must say cancel is unavailable.
+   */
+  cancelFlush(): void {
+    if (this.flush.phase === "encrypting" || this.flush.phase === "proving") {
+      this.flushAbort?.abort();
+    }
+  }
+
+  /** Pending outbox rows for a contact or #group, newest last. */
+  pendingFor(to: string): OutboxEntry[] {
+    return this.outbox
+      .list()
+      .filter((e) => e.to === to && e.status !== "confirmed")
+      .sort((a, b) => a.queuedAt - b.queuedAt);
   }
 
   // -- sync -----------------------------------------------------------------
@@ -368,6 +439,15 @@ function readJson<T>(key: string): T | null {
   } catch {
     return null;
   }
+}
+
+function normalizeConfig(cfg: AppConfig | null): AppConfig | null {
+  if (!cfg) return null;
+  return {
+    ...cfg,
+    provingMode: cfg.provingMode ?? "hosted",
+    submissionMode: cfg.submissionMode ?? "paymaster",
+  };
 }
 
 export const store = new AppStore();
